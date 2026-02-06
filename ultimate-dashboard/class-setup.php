@@ -94,11 +94,10 @@ class Setup {
 		add_action( 'plugins_loaded', array( $this, 'load_modules' ), 20 );
 		add_action( 'plugins_loaded', array( $this, 'load_plugin_onboarding_module' ), 20 );
 		add_action( 'plugins_loaded', array( $this, 'load_onboarding_wizard_module' ), 20 );
-
 		add_action( 'init', array( self::get_instance(), 'check_activation_meta' ) );
+		add_action( 'init', array( $this, 'register_action_links' ) );
 		add_action( 'admin_menu', array( $this, 'pro_submenu' ), 20 );
 		add_filter( 'admin_body_class', array( $this, 'admin_body_class' ), 20 );
-		add_filter( 'plugin_action_links_' . ULTIMATE_DASHBOARD_PLUGIN_FILE, array( $this, 'action_links' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_styles' ), 20 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_scripts' ), 20 );
 		add_action( 'admin_notices', array( self::get_instance(), 'review_notice' ) );
@@ -175,6 +174,14 @@ class Setup {
 
 		return $classes;
 
+	}
+
+	/**
+	 * Register plugin action links filter after init hook.
+	 * This ensures translations are loaded before the callback is executed.
+	 */
+	public function register_action_links() {
+		add_filter( 'plugin_action_links_' . ULTIMATE_DASHBOARD_PLUGIN_FILE, array( $this, 'action_links' ) );
 	}
 
 	/**
@@ -435,7 +442,7 @@ class Setup {
 		$notice  .= "<a href=\"$review_url\" style=\"margin-top: 15px;\" target='_blank' class=\"button-primary\">$btn_text</a>";
 
 		echo '<div class="notice udb-notice udb-review-notice notice-success is-dismissible is-permanent-dismissible" data-ajax-action="udb_dismiss_review_notice">';
-		echo '<p>' . $notice . '</p>';
+		echo '<p>' . wp_kses_post( $notice ) . '</p>';
 		echo '</div>';
 
 	}
@@ -475,10 +482,10 @@ class Setup {
 		}
 
 		// Intentional: using manually written string instead of gmdate( 'Y' ).
-		$this_year = '2024';
+		$this_year = '2025';
 		$last_year = $this_year - 1;
-		$start     = strtotime( 'november 22nd, ' . $this_year );
-		$end       = strtotime( 'december 2nd, ' . $this_year );
+		$start     = strtotime( 'november 24th, ' . $this_year );
+		$end       = strtotime( 'december 1st, ' . $this_year );
 		$now       = time();
 
 		// Stop here if we are not in the sales period.
@@ -511,20 +518,20 @@ class Setup {
 				</div>
 				<div class="notice-content">
 					<h2>
-						<?php _e( 'Black Friday Sale! - Up to 25% Off Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
+						<?php esc_html_e( 'Black Friday Sale! - Up to 25% Off Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
 					</h2>
 					<p>
-						<?php _e( 'Save big & upgrade to <strong>Ultimate Dashboard PRO</strong>, today!', 'ultimate-dashboard' ); ?>
+						<?php echo wp_kses_post( __( 'Save big & upgrade to <strong>Ultimate Dashboard PRO</strong>, today!', 'ultimate-dashboard' ) ); ?>
 					</p>
 					<p>
-						<?php _e( 'But hurry up, the deal will expire soon!', 'ultimate-dashboard' ); ?><br>
-						<em><?php _e( 'All prices are reduced. No coupon code required.', 'ultimate-dashboard' ); ?></em>
+						<?php esc_html_e( 'But hurry up, the deal will expire soon!', 'ultimate-dashboard' ); ?><br>
+						<em><?php esc_html_e( 'All prices are reduced. No coupon code required.', 'ultimate-dashboard' ); ?></em>
 					</p>
 					<p>
 						<a target="_blank" href="<?php echo esc_url( $bfcm_url ); ?>" class="button button-primary">
-							<?php _e( 'Learn more', 'ultimate-dashboard' ); ?>
+							<?php esc_html_e( 'Learn more', 'ultimate-dashboard' ); ?>
 						</a>
-						<small><?php _e( '*Only Administrators will see this message.', 'ultimate-dashboard' ); ?></small>
+						<small><?php esc_html_e( '*Only Administrators will see this message.', 'ultimate-dashboard' ); ?></small>
 					</p>
 				</div>
 			</div>
@@ -542,7 +549,7 @@ class Setup {
 			wp_send_json_error( 'Invalid Request' );
 		}
 
-		update_option( 'udb_bfcm_notice_dismissed_2024', 1 );
+		update_option( 'udb_bfcm_notice_dismissed_2025', 1 );
 		wp_send_json_success( 'Review notice has been dismissed.' );
 
 	}
