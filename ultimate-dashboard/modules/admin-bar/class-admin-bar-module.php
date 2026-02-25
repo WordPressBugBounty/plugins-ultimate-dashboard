@@ -138,6 +138,8 @@ class Admin_Bar_Module extends Base_Module {
 			),
 		);
 
+		$this->frontend_items = apply_filters( 'udb_admin_bar_frontend_items', $this->frontend_items );
+
 		$this->frontend_menu = $this->frontend_items_to_array();
 
 	}
@@ -161,7 +163,11 @@ class Admin_Bar_Module extends Base_Module {
 	public function setup() {
 
 		add_action( 'admin_menu', array( self::get_instance(), 'submenu_page' ) );
-		add_action( 'wp_before_admin_bar_render', array( self::get_instance(), 'get_existing_menu' ), 999999 );
+
+		if ( is_admin() ) {
+			add_action( 'wp_before_admin_bar_render', array( self::get_instance(), 'get_existing_menu' ), 999999 );
+		}
+
 		add_action( 'admin_enqueue_scripts', array( self::get_instance(), 'admin_styles' ) );
 		add_action( 'admin_enqueue_scripts', array( self::get_instance(), 'admin_scripts' ) );
 
