@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || die( "Can't access directly" );
 
 use WP_Query;
 use Udb\Base\Base_Output;
+use Udb\Helpers\Widget_Helper;
 
 /**
  * Class to setup widgets output.
@@ -178,7 +179,7 @@ class Widget_Output extends Base_Output {
 
 				$output = sprintf(
 					'<div class="udb-html-wrapper">%1s</div>',
-					wp_kses_post( do_shortcode( $content ) )
+					do_shortcode( $content )
 				);
 
 				$output = $this->convert_placeholder_tags( $output );
@@ -237,20 +238,8 @@ class Widget_Output extends Base_Output {
 			$output = apply_filters( 'udb_widget_output', $output, $output_args );
 
 			$output_callback = function () use ( $output ) {
-				$allowed_tags           = wp_kses_allowed_html( 'post' );
-				$allowed_tags['form']   = array(
-					'class'  => true,
-					'method' => true,
-					'action' => true,
-				);
-				$allowed_tags['input']  = array(
-					'type'     => true,
-					'name'     => true,
-					'value'    => true,
-					'class'    => true,
-					'required' => true,
-				);
-				echo wp_kses( $output, $allowed_tags );
+				$widget_helper = new Widget_Helper();
+				echo wp_kses( $output, $widget_helper->get_allowed_tags() );
 			};
 
 			// Add metabox.
