@@ -2,9 +2,9 @@
 Contributors: davidvongries
 Tags: Custom Dashboard, Admin Menu Editor, Custom Login Screen, Custom WordPress Admin, Branda
 Requires at least: 4.6
-Tested up to: 6.9
+Tested up to: 7.1
 Requires PHP: 5.6
-Stable tag: 3.8.17
+Stable tag: 3.8.18
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -103,6 +103,10 @@ For multisite support & more check out [Ultimate Dashboard PRO](https://ultimate
 11. Modules Screen
 
 == Changelog ==
+= 3.8.18 | October 10, 2026 =
+* Tested up to WordPress 7.1
+* Tweak: Added webp & avif support
+* Fixed: Incompatibility with Admin Menu Editor & Elementor Page Builder
 = 3.8.17 | June 06, 2026 =
 * Tweak: WordPress 7.0 compatibility
 * Fixed: Minor security issue
