@@ -123,7 +123,15 @@
  */
 #adminmenu #menu-posts-udb_widgets a[href="https://ultimatedashboard.io/pro/"],
 #adminmenu #menu-posts-udb_widgets a[href="edit.php?post_type=udb_widgets&page=udb_plugin_onboarding"] {
-	background: #00a32a;
+	background: var(--wp-admin-theme-color, #3858e9); /* the admin color scheme's blue */
+	color: #fff;
+}
+
+#adminmenu #menu-posts-udb_widgets a[href="https://ultimatedashboard.io/pro/"]:hover,
+#adminmenu #menu-posts-udb_widgets a[href="https://ultimatedashboard.io/pro/"]:focus,
+#adminmenu #menu-posts-udb_widgets a[href="edit.php?post_type=udb_widgets&page=udb_plugin_onboarding"]:hover,
+#adminmenu #menu-posts-udb_widgets a[href="edit.php?post_type=udb_widgets&page=udb_plugin_onboarding"]:focus {
+	background: var(--wp-admin-theme-color-darker-10, #2c448f);
 	color: #fff;
 }
 
@@ -153,80 +161,28 @@
  * BFCM Notice.
  */
 .udb-bfcm-notice {
-	padding: 25px 20px;
-}
-
-.udb-bfcm-notice .notice-body {
 	display: flex;
+	align-items: flex-start;
+	gap: 16px;
+	padding: 16px 40px 16px 16px; /* room for the dismiss button */
 }
 
-.udb-bfcm-notice .notice-icon {
-	padding-right: 25px;
+.udb-bfcm-notice-logo {
+	flex-shrink: 0;
+	width: 48px;
+	height: 48px;
 }
 
-.udb-bfcm-notice .notice-icon img {
-	max-width: 55px;
+.udb-bfcm-notice h2 {
+	margin: 0 0 4px;
+	font-size: 15px;
 }
 
-.udb-bfcm-notice .notice-content {
-	width: 100%;
+.udb-bfcm-notice p {
+	margin: 0 0 10px;
+	padding: 0;
 }
 
-.udb-bfcm-notice .notice-content h2 {
-	margin-top: 0;
-	margin-bottom: 10px;
-	font-weight: 700;
-}
-
-.udb-bfcm-notice .notice-content > p {
-	margin-top: 0;
-	margin-bottom: 10px;
-}
-
-.udb-bfcm-notice .notice-content > p:last-child {
+.udb-bfcm-notice p:last-child {
 	margin-bottom: 0;
-}
-
-/**
- * Upgrade nag.
- */
-.udb-pro-upgrade-nag {
-	margin-top: 15px;
-	background: #197cff;
-	color: #fff;
-	margin-bottom: 20px;
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 20px;
-	font-weight: 700;
-}
-
-.udb-pro-upgrade-nag > * {
-	margin: 0;
-}
-
-.udb-pro-upgrade-nag .button {
-	background: rgba(0, 45, 96, 0.5);
-	padding: 5px 15px !important;
-}
-
-.udb-pro-upgrade-nag .button:hover {
-	background: rgba(0, 45, 96, 0.6);
-}
-
-.udb-pro-admin-bar-notice {
-	border-top: none;
-	margin-top: 0;
-	padding-top: 0;
-}
-
-@media screen and (max-width: 991px) {
-	.udb-pro-upgrade-nag {
-		flex-wrap: wrap;
-	}
-	.udb-pro-upgrade-nag .button {
-		margin-top: 20px;
-		margin-bottom: 0;
-	}
 }

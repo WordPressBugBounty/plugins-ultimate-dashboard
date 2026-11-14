@@ -5,8 +5,6 @@
  * @package Ultimate_Dashboard
  */
 
-// are we sanitizing everything correctly? Not sure if all of those are actually text fields.
-
 use Udb\AdminPage\Admin_Page_Module;
 
 defined( 'ABSPATH' ) || die( "Can't access directly" );
@@ -33,7 +31,7 @@ return function ( $module, $post_id ) {
 
 	$nonce = isset( $_POST['udb_nonce'] ) ? sanitize_text_field( wp_unslash( $_POST['udb_nonce'] ) ) : '';
 
-	if ( ! wp_verify_nonce( $nonce, 'udb_edit_admin_page' ) ) {
+	if ( ! wp_verify_nonce( $nonce, 'udb_edit_admin_page' ) || ! current_user_can( 'edit_post', $post_id ) ) {
 		return;
 	}
 
@@ -51,7 +49,9 @@ return function ( $module, $post_id ) {
 
 	// HTML content.
 	if ( isset( $_POST['udb_html_content'] ) ) {
-		update_post_meta( $post_id, 'udb_html_content', wp_kses_post( wp_unslash( $_POST['udb_html_content'] ) ) );
+		// Same tags as HTML widgets, so forms keep their fields.
+		$allowed_tags = ( new \Udb\Helpers\Widget_Helper() )->get_allowed_tags();
+		update_post_meta( $post_id, 'udb_html_content', wp_kses( wp_unslash( $_POST['udb_html_content'] ), $allowed_tags ) );
 	}
 
 	// Menu type.

@@ -12,8 +12,12 @@
 defined( 'ABSPATH' ) || die( "Can't access directly" );
 
 use Udb\Helpers\Content_Helper;
+use Udb\Helpers\Widget_Helper;
 
 $content_helper = new Content_Helper();
+
+// Same tags as HTML widgets: posts' default list drops forms, inputs and selects (shortcode forms would break).
+$allowed_tags = ( new Widget_Helper() )->get_allowed_tags();
 
 do_action( 'udb_ms_switch_blog' );
 
@@ -24,10 +28,28 @@ do_action( 'udb_ms_restore_blog' );
 $remove_page_title  = $post->remove_page_title;
 $remove_page_margin = $post->remove_page_margin;
 
+// Content from the default (classic) editor: WordPress' admin styles drop list bullets and let images overflow.
+$is_editor_content = 'html' !== $post->content_type && 'default' === $editor;
+
 $custom_css = $post->custom_css;
 ?>
 
 <style>
+	.udb-admin-page-content ul {
+		padding-left: 2em;
+		list-style: disc;
+	}
+
+	.udb-admin-page-content ol {
+		padding-left: 2em;
+		list-style: decimal;
+	}
+
+	.udb-admin-page-content img {
+		max-width: 100%;
+		height: auto;
+	}
+
 	<?php if ( $remove_page_margin ) : ?>
 	#wpcontent {
 		padding-left: 0;
@@ -50,18 +72,27 @@ $custom_css = $post->custom_css;
 	<?php if ( ! $remove_page_title ) : ?>
 		<h1><?php echo esc_html( $post->post_title ); ?></h1>
 	<?php else : ?>
-		<h1 style="display: none;"></h1>
+		<h1 class="screen-reader-text"><?php echo esc_html( $post->post_title ); ?></h1>
+		<hr class="wp-header-end">
+	<?php endif; ?>
+
+	<?php if ( $is_editor_content ) : ?>
+		<div class="udb-admin-page-content">
 	<?php endif; ?>
 
 	<?php
 	if ( ! udb_is_pro_active() ) {
 		if ( 'html' === $post->content_type ) {
-			echo wp_kses_post( $post->html_content );
+			echo wp_kses( $post->html_content, $allowed_tags );
 		} else {
-			echo wp_kses_post( apply_filters( 'the_content', $post->post_content ) );
+			echo wp_kses( apply_filters( 'the_content', $post->post_content ), $allowed_tags );
 		}
 	}
 
 	do_action( 'udb_admin_page_content_output', $post, $editor, $from_multisite );
 	?>
+
+	<?php if ( $is_editor_content ) : ?>
+		</div>
+	<?php endif; ?>
 </div>

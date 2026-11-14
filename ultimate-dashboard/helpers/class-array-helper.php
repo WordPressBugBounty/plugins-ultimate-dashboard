@@ -84,8 +84,9 @@ class Array_Helper {
 	public function clean_unserialize( $value, $depth = 2 ) {
 		for ( $i = 0; $i < $depth; $i++ ) {
 			if ( is_serialized( $value ) ) {
-				// phpcs:ignore
-				$value = unserialize( $value );
+				// The values are arrays of roles or user IDs, never objects.
+				// phpcs:ignore WordPress.PHP.DiscouragedPHPFunctions.serialize_unserialize -- Needed for old double-serialized values.
+				$value = unserialize( $value, array( 'allowed_classes' => false ) );
 
 				if ( ! is_serialized( $value ) ) {
 					break;

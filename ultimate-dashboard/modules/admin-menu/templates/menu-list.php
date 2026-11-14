@@ -23,8 +23,8 @@ ob_start();
 		</div>
 		<div class="udb-menu-builder--menu-actions">
 			{trash_icon}
-			<span class="dashicons dashicons-{hidden_icon} hide-menu"></span>
-			<span class="dashicons dashicons-arrow-down-alt2 expand-menu"></span>
+			<button type="button" class="dashicons dashicons-{hidden_icon} hide-menu" title="<?php esc_attr_e( 'Show/hide', 'ultimate-dashboard' ); ?>" aria-label="<?php esc_attr_e( 'Show/hide', 'ultimate-dashboard' ); ?>"></button>
+			<button type="button" class="button expand-menu"><?php esc_html_e( 'Edit', 'ultimate-dashboard' ); ?></button>
 		</div>
 	</div><!-- .udb-menu-builder--control-panel -->
 
@@ -98,8 +98,10 @@ ob_start();
 								<div class="udb-menu-builder--tab-content">
 									<div id="udb-menu-builder--dashicon-tab--{role}" class="udb-menu-builder--tab-content-item {dashicon_tab_is_active}">
 										<div class="field">
-											<div class="control">
-												<input type="text" class="udb-menu-builder--text-field udb-menu-builder--icon-field dashicons-picker" data-width="100%" name="menu_dashicon_{role}_{default_menu_id}" id="menu_dashicon_{role}_{default_menu_id}" value="{menu_dashicon}" placeholder="{default_menu_dashicon}" data-name="dashicon" />
+											<div class="udb-icon-field" data-icon-set="dashicons" data-value="name" data-sync>
+												<button type="button" class="icon-picker" aria-label="<?php esc_attr_e( 'Change icon', 'ultimate-dashboard' ); ?>"><i aria-hidden="true"></i></button>
+												<input type="hidden" class="udb-menu-builder--icon-field" name="menu_dashicon_{role}_{default_menu_id}" id="menu_dashicon_{role}_{default_menu_id}" value="{menu_dashicon}" data-default="{default_menu_dashicon}" data-name="dashicon">
+												<button type="button" class="button-link icon-picker-clear"><?php esc_html_e( 'Use default', 'ultimate-dashboard' ); ?></button>
 											</div>
 										</div>
 									</div>
@@ -125,7 +127,7 @@ ob_start();
 					</div><!-- .udb-menu-builder--fields -->
 				</div><!-- #udb-menu-builder--settings-tab -->
 				<div id="udb-menu-builder--submenu-tab--{role}" class="udb-menu-builder--tab-content-item udb-menu-builder--edit-area">
-					<ul class="udb-menu-builder--menu-list udb-menu-builder--submenu-list udb-menu-builder-sortable">
+					<ul class="udb-menu-builder--menu-list udb-menu-builder--submenu-list udb-menu-builder-sortable" data-empty-text="<?php esc_attr_e( 'No submenu items.', 'ultimate-dashboard' ); ?>">
 						{submenu_template}
 					</ul>
 

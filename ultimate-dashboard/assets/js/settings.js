@@ -21,6 +21,83 @@
 		setupCssFields();
 		setupColorFields();
 		setupTabsNavigation();
+		setupRemoveAllWidgets();
+		setupWelcomePanelReset();
+	}
+
+	/**
+	 * "Remove All Widgets" makes the individual widget boxes irrelevant: grey them out while it's checked.
+	 * The boxes keep their values, so unchecking "Remove All" brings the previous choice back.
+	 */
+	function setupRemoveAllWidgets() {
+		const removeAll = document.querySelector('[name="udb_settings[remove-all]"]');
+		const individualRow = document
+			.querySelector('[name="udb_settings[welcome_panel]"]')
+			?.closest("tr");
+
+		if (!(removeAll instanceof HTMLInputElement) || !individualRow) return;
+
+		function update() {
+			individualRow.classList.toggle("row-disabled", removeAll.checked);
+			individualRow.toggleAttribute("inert", removeAll.checked);
+		}
+
+		removeAll.addEventListener("change", update);
+		update();
+	}
+
+	/**
+	 * The welcome panel editor starts with WordPress' default panel.
+	 *
+	 * The hidden "is default" field tells the save whether it's still WordPress' panel (then nothing is saved,
+	 * so the dashboard keeps showing WordPress' own, current panel) or edited content.
+	 * "Reset to WordPress default" puts WordPress' panel back in the editor.
+	 */
+	function setupWelcomePanelReset() {
+		const button = document.querySelector(".udb-welcome-panel-reset");
+		const isDefault = document.getElementById("udb-welcome-panel-is-default");
+		const defaultContent = document.getElementById("udb-welcome-panel-default");
+		if (!(button instanceof HTMLElement)) return;
+		if (!(isDefault instanceof HTMLInputElement)) return;
+		if (!(defaultContent instanceof HTMLTextAreaElement)) return;
+
+		const editorId = button.dataset.editor || "";
+		const textarea = document.getElementById(editorId);
+		const getEditor = () => (window.tinymce ? window.tinymce.get(editorId) : null);
+
+		// Edits in the Text tab.
+		if (textarea instanceof HTMLTextAreaElement) {
+			textarea.addEventListener("input", function () {
+				isDefault.value = "0";
+			});
+		}
+
+		// Edits in the Visual tab. Capture phase: runs before TinyMCE's own submit handler clears "dirty".
+		if (textarea instanceof HTMLTextAreaElement && textarea.form) {
+			textarea.form.addEventListener(
+				"submit",
+				function () {
+					const editor = getEditor();
+					if (editor && editor.isDirty()) isDefault.value = "0";
+				},
+				true
+			);
+		}
+
+		button.addEventListener("click", function () {
+			const editor = getEditor();
+
+			if (editor) {
+				editor.setContent(defaultContent.value);
+				editor.setDirty(false);
+			}
+
+			if (textarea instanceof HTMLTextAreaElement) {
+				textarea.value = editor ? editor.getContent() : defaultContent.value;
+			}
+
+			isDefault.value = "1";
+		});
 	}
 
 	/**
@@ -45,17 +122,15 @@
 			var codeEditor = wp.codeEditor.initialize(el, editorSettings);
 			codeMirrorInstances.push(codeEditor.codemirror);
 		});
+	}
 
-		setTimeout(function () {
-			codeMirrorInstances.forEach(function (codeMirror) {
-				codeMirror.refresh();
-
-				// Setting up a timeout again to make sure the CodeMirror is refreshed
-				setTimeout(function () {
-					codeMirror.refresh();
-				}, 1000);
-			});
-		}, 2000); // Yes, 2seconds, you're right. It's necessary.
+	/**
+	 * CodeMirror can't measure itself inside a hidden tab: refresh it when its tab is shown.
+	 */
+	function refreshCssFields() {
+		codeMirrorInstances.forEach(function (codeMirror) {
+			codeMirror.refresh();
+		});
 	}
 
 	/**
@@ -83,39 +158,30 @@
 	 */
 	function setupTabsNavigation() {
 		$(".heatbox-tab-nav-item").on("click", function () {
-			$(".heatbox-tab-nav-item").removeClass("active");
-			$(this).addClass("active");
-
 			const link = this.querySelector("a");
-			const hashValue = link?.href.substring(link.href.indexOf("#") + 1) ?? "";
-
-			setRefererValue(hashValue);
-
-			$(".udb-settings-form .heatbox-admin-panel").css("display", "none");
-			$(".udb-settings-form .udb-" + hashValue + "-panel").css(
-				"display",
-				"block"
-			);
+			showPanel(link?.href.substring(link.href.indexOf("#") + 1) ?? "");
 		});
 
 		window.addEventListener("load", function () {
-			var hashValue = window.location.hash.substr(1);
-
-			if (!hashValue) {
-				hashValue = "widgets";
-			}
-
-			setRefererValue(hashValue);
-
-			$(".heatbox-tab-nav-item").removeClass("active");
-			$(".heatbox-tab-nav-item." + hashValue + "-panel").addClass("active");
-
-			$(".udb-settings-form .heatbox-admin-panel").css("display", "none");
-			$(".udb-settings-form .udb-" + hashValue + "-panel").css(
-				"display",
-				"block"
-			);
+			showPanel(window.location.hash.substr(1) || "widgets");
 		});
+	}
+
+	/**
+	 * Show a tab's panel.
+	 *
+	 * @param {string} hashValue The tab (widgets, general, custom-css …).
+	 */
+	function showPanel(hashValue) {
+		setRefererValue(hashValue);
+
+		$(".heatbox-tab-nav-item").removeClass("active");
+		$(".heatbox-tab-nav-item." + hashValue + "-panel").addClass("active");
+
+		$(".udb-settings-form .heatbox-admin-panel").css("display", "none");
+		$(".udb-settings-form .udb-" + hashValue + "-panel").css("display", "block");
+
+		refreshCssFields();
 	}
 
 	/**

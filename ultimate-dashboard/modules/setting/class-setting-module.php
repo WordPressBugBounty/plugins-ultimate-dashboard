@@ -10,7 +10,9 @@ namespace Udb\Setting;
 defined( 'ABSPATH' ) || die( "Can't access directly" );
 
 use Udb\Base\Base_Module;
+use Udb\Helpers\Admin_Bar_Helper;
 use Udb\Helpers\Content_Helper;
+use Udb\Helpers\Widget_Helper;
 
 /**
  * Class to setup setting module.
@@ -72,7 +74,7 @@ class Setting_Module extends Base_Module {
 	public function submenu_page_content() {
 
 		$template = require __DIR__ . '/templates/settings-template.php';
-		$template();
+		$template( $this );
 
 	}
 
@@ -112,13 +114,12 @@ class Setting_Module extends Base_Module {
 
 		// Widget sections.
 		add_settings_section( 'udb-widgets-section', __( 'WordPress Dashboard Widgets', 'ultimate-dashboard' ), '', 'udb-widget-settings' );
-		add_settings_section( 'udb-3rd-party-widgets-section', __( '3rd Party Widgets', 'ultimate-dashboard' ), '', 'udb-widget-settings' );
+		// Own box: locked with a PRO badge in free (PRO swaps in the real field).
+		$third_party_title = __( '3rd Party Widgets', 'ultimate-dashboard' ) . ( udb_is_pro_active() ? '' : ' <span class="heatbox-badge">PRO</span>' );
+		add_settings_section( 'udb-3rd-party-widgets-section', $third_party_title, '', 'udb-3rd-party-widget-settings' );
 
 		// Widget styling section.
 		add_settings_section( 'udb-styling-section', __( 'Dashboard Widget Styling', 'ultimate-dashboard' ), '', 'udb-widget-styling-settings' );
-
-		// Welcome panel section.
-		add_settings_section( 'udb-welcome-panel-section', __( 'Welcome Panel', 'ultimate-dashboard' ), '', 'udb-welcome-panel-settings' );
 
 		// We use this hook to place the Page Builder Dashboard feature here.
 		do_action( 'udb_after_widget_metabox' );
@@ -156,7 +157,7 @@ class Setting_Module extends Base_Module {
 			'remove-3rd-party-widgets',
 			__( 'Remove 3rd Party Widgets', 'ultimate-dashboard' ),
 			array( $this, 'remove_3rd_party_widgets_field' ),
-			'udb-widget-settings',
+			'udb-3rd-party-widget-settings',
 			'udb-3rd-party-widgets-section'
 		);
 
@@ -175,16 +176,6 @@ class Setting_Module extends Base_Module {
 			array( $this, 'headline_color_field' ),
 			'udb-widget-styling-settings',
 			'udb-styling-section'
-		);
-
-		// Welcome panel fields.
-		add_settings_field(
-			'udb-welcome-panel-field',
-			'',
-			array( $this, 'welcome_panel_field' ),
-			'udb-welcome-panel-settings',
-			'udb-welcome-panel-section',
-			array( 'class' => 'udb-no-label' )
 		);
 
 		// General fields.
@@ -220,17 +211,7 @@ class Setting_Module extends Base_Module {
 			'udb-general-section'
 		);
 
-		$remove_fa_description = '<p class="description">' . __( 'Use only if your icons are not displayed correctly.', 'ultimate-dashboard' ) . '</p>';
-
 		// Misc fields.
-		add_settings_field(
-			'remove_font_awesome',
-			__( 'Remove Font Awesome', 'ultimate-dashboard' ) . $remove_fa_description,
-			array( $this, 'remove_fontawesome_field' ),
-			'udb-misc-settings',
-			'udb-misc-section'
-		);
-
 		$show_data_removal_field = apply_filters( 'udb_show_data_removal_field', true );
 
 		if ( $show_data_removal_field ) {
@@ -260,14 +241,6 @@ class Setting_Module extends Base_Module {
 			'udb-custom-css-section'
 		);
 
-		add_settings_field(
-			'custom-login-css',
-			__( 'Custom Login CSS', 'ultimate-dashboard' ),
-			array( $this, 'custom_login_css_field' ),
-			'udb-custom-css-settings',
-			'udb-custom-css-section'
-		);
-
 	}
 
 	/**
@@ -279,24 +252,141 @@ class Setting_Module extends Base_Module {
 	 */
 	public function sanitize_input( $input ) {
 
-		$output = $input;
+		if ( ! is_array( $input ) ) {
+			return array();
+		}
 
 		$content_helper = new Content_Helper();
 
-		if ( isset( $output['custom_admin_css'] ) ) {
-			$output['custom_admin_css'] = $content_helper->sanitize_css( $output['custom_admin_css'] );
+		/*
+		 * Every setting free knows, by type. Keys that aren't listed (PRO's, PRO's 3rd party widget boxes)
+		 * are left exactly as they are: free can't know their format.
+		 */
+		$schema = array(
+			'flag'  => array_merge(
+				array( 'remove-all', 'welcome_panel', 'remove_help_tab', 'remove_screen_options', 'remove-on-uninstall' ),
+				Widget_Helper::DEFAULT_WIDGETS
+			),
+			'color' => array( 'icon_color', 'headline_color' ),
+			'text'  => array( 'dashboard_headline', 'howdy_text' ),
+			'html'  => array( 'welcome_panel_content' ),
+			'css'   => array( 'custom_css', 'custom_admin_css' ),
+			'roles' => array( 'remove_admin_bar' ),
+		);
+
+		// Saved elsewhere (admin bar editor, setup wizard), not on the settings page: saving the settings page keeps them.
+		$managed_elsewhere = array( 'remove_admin_bar' );
+
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only tells where the save comes from; options.php checked the nonce.
+		$from_settings_page = isset( $_POST['option_page'] ) && 'udb-settings-group' === $_POST['option_page'];
+
+		if ( $from_settings_page ) {
+			$saved = get_option( 'udb_settings', array() );
+			$saved = is_array( $saved ) ? $saved : array();
+
+			foreach ( $managed_elsewhere as $key ) {
+				if ( ! isset( $input[ $key ] ) && isset( $saved[ $key ] ) ) {
+					$input[ $key ] = $saved[ $key ];
+				}
+			}
+
+			/*
+			 * Without PRO, the page doesn't show PRO's fields, so their keys are missing from the form:
+			 * keep every saved key free doesn't know, or saving would wipe PRO's settings.
+			 */
+			if ( ! udb_is_pro_active() ) {
+				$free_keys = array_merge( ...array_values( $schema ) );
+
+				foreach ( $saved as $key => $value ) {
+					if ( ! isset( $input[ $key ] ) && ! in_array( $key, $free_keys, true ) ) {
+						$input[ $key ] = $value;
+					}
+				}
+			}
 		}
 
-		if ( isset( $output['custom_css'] ) ) {
-			$output['custom_css'] = $content_helper->sanitize_css( $output['custom_css'] );
+		$output = $input;
+
+		foreach ( $schema as $type => $keys ) {
+			foreach ( $keys as $key ) {
+				if ( ! isset( $input[ $key ] ) ) {
+					continue;
+				}
+
+				$value = $this->sanitize_value( $type, $input[ $key ], $content_helper );
+
+				if ( null === $value ) {
+					unset( $output[ $key ] );
+				} else {
+					$output[ $key ] = $value;
+				}
+			}
 		}
 
-		if ( ! empty( $output['welcome_panel_is_default'] ) ) {
+		/*
+		 * The welcome panel editor starts with WordPress' default panel. Left unchanged, nothing is saved,
+		 * so the dashboard keeps showing WordPress' own (current) panel.
+		 */
+		if ( ! empty( $input['welcome_panel_is_default'] ) ) {
 			unset( $output['welcome_panel_content'] );
-			unset( $output['welcome_panel_is_default'] );
 		}
+
+		unset( $output['welcome_panel_is_default'] );
+
+		// "Remove Font Awesome" setting from before 4.0 (Font Awesome is gone).
+		unset( $output['remove_font_awesome'] );
 
 		return $output;
+
+	}
+
+	/**
+	 * Sanitize one setting by its type.
+	 *
+	 * @param string         $type           flag, color, text, html, css or roles.
+	 * @param mixed          $value          The value.
+	 * @param Content_Helper $content_helper The content helper.
+	 *
+	 * @return mixed The value to save, or null to remove the setting.
+	 */
+	private function sanitize_value( $type, $value, $content_helper ) {
+
+		switch ( $type ) {
+			case 'flag':
+				return empty( $value ) ? null : 1;
+
+			case 'color':
+				$value = trim( (string) $value );
+
+				if ( sanitize_hex_color( $value ) ) {
+					return sanitize_hex_color( $value );
+				}
+
+				return preg_match( '/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(0|1|0?\.\d+)\s*)?\)$/', $value ) ? $value : null;
+
+			case 'text':
+				$value = sanitize_text_field( (string) $value );
+				return '' === $value ? null : $value;
+
+			case 'html':
+				$value = trim( wp_kses_post( (string) $value ) );
+				return '' === $value ? null : $value;
+
+			case 'css':
+				return $content_helper->sanitize_css( (string) $value );
+
+			case 'roles':
+				// Old versions saved a single checkbox value, which means "all".
+				if ( ! is_array( $value ) ) {
+					return empty( $value ) ? null : array( 'all' );
+				}
+
+				$roles = ( new Admin_Bar_Helper() )->sanitize_roles( $value );
+
+				return $roles ? $roles : null;
+		}
+
+		return $value;
 
 	}
 
@@ -429,26 +519,17 @@ class Setting_Module extends Base_Module {
 	public function custom_login_css_field() {
 		?>
 
-		<p class="description" style="margin: 0;">
+		<p>
 			<?php esc_html_e( 'To add custom CSS to the WordPress login screen, please click the button below to launch the WordPress customizer.', 'ultimate-dashboard' ); ?>
 		</p>
-		<br>
-		<a href="<?php echo esc_url( admin_url( 'customize.php?autofocus%5Bsection%5D=udb_login_customizer_custom_css_js_section' ) ); ?>"
-			class="button button-primary button-larger">
-			<?php esc_html_e( 'Add Custom Login CSS', 'ultimate-dashboard' ); ?>
-		</a>
+
+		<p>
+			<a href="<?php echo esc_url( admin_url( 'customize.php?autofocus%5Bsection%5D=udb_login_customizer_custom_css_js_section' ) ); ?>" class="button button-primary">
+				<?php esc_html_e( 'Add Custom Login CSS', 'ultimate-dashboard' ); ?>
+			</a>
+		</p>
 
 		<?php
-
-	}
-
-	/**
-	 * Remove Font Awesome field.
-	 */
-	public function remove_fontawesome_field() {
-
-		$field = require __DIR__ . '/templates/fields/remove-font-awesome.php';
-		$field();
 
 	}
 

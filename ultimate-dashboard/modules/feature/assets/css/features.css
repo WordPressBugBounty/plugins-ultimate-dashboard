@@ -1,83 +1,66 @@
-/* Features */
-.udb-features-container {
-	display: flex;
-	flex-wrap: wrap;
+/**
+ * Modules page: heatbox boxes in three columns (.heatbox-columns.is-three).
+ * Our own parts: the icon in the box title and the status row at the bottom.
+ */
+
+/* A bit more air between the cards than heatbox's default gap */
+.udb-modules {
+	gap: 24px;
 }
 
-.udb-features-container .heatbox {
+/* The status row stays at the bottom when a box in the row has more text */
+.udb-modules .heatbox {
 	display: flex;
 	flex-direction: column;
-	flex: 0 32%;
-	margin-right: 2%;
 }
 
-.udb-features-container .heatbox:nth-child(3n) {
-	margin-right: 0;
+.udb-modules .heatbox-content {
+	flex-grow: 1;
 }
 
-@media screen and (max-width: 768px) {
-	.udb-features-container .heatbox {
-		flex: 0 100%;
-		margin-right: 0;
-	}
+/* WordPress sets paragraphs to 13px */
+.udb-modules p {
+	font-size: 15px;
+	line-height: 1.6;
 }
 
-.udb-features-container .heatbox h2 {
+.udb-modules h2 {
 	display: flex;
 	align-items: center;
+	gap: 10px;
+	font-size: 19px;
 }
 
-.udb-features-container .heatbox h2 img {
-	width: 32px;
-	margin-right: 10px;
-	opacity: 0.75;
+/* Module icon: our own line icons (template), in the admin color scheme's accent */
+.udb-module-icon {
+	flex-shrink: 0;
+	width: 24px;
+	height: 24px;
+	fill: none;
+	stroke: currentColor;
+	stroke-width: 1.75;
+	stroke-linecap: round;
+	stroke-linejoin: round;
+	color: var(--heatbox-accent);
+	position: relative;
+	top: 1px; /* centers the icon on the capital letters, not the line box */
 }
 
-.heatbox-content {
-	flex: 1 0 auto;
-	min-height: 130px;
-}
-
-.heatbox-content p {
-	font-size: 14.5px;
-}
-
-.feature-status {
+/* Status row: Active/Inactive badge on the left, the on/off toggle on the right */
+.udb-module-status {
 	display: flex;
 	align-items: center;
-	padding: 15px 20px;
-	border-top: 1px solid #eee;
-	background: #f9f9f9;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 15px var(--heatbox-box-padding);
+	background: var(--heatbox-surface-hover);
+	border-top: 1px solid var(--heatbox-box-border);
+	border-radius: 0 0 calc(var(--heatbox-radius) - 1px) calc(var(--heatbox-radius) - 1px);
 }
 
-.feature-status > * {
-	width: 50%;
-}
-
-.feature-status .status-switch {
-	text-align: right;
-}
-
-.feature-status .status {
-	font-size: 14.5px;
-}
-
-.feature-status .status .status-code {
-	font-weight: 700;
-}
-
-.feature-status .status-code .active {
-	color: #008000;
-}
-
-.feature-status .status-code .inactive {
-	color: #aaa;
-}
-
-.feature-save-error {
-	padding: 10px 20px;
-	font-size: 13px;
-	color: #8a1f1f;
-	background-color: #fcf0f0;
-	border-top: 1px solid #f0d4d4;
+/* Larger than heatbox's badge, which is sized for box titles */
+.udb-module-status .heatbox-badge {
+	margin: 0;
+	padding: 3px 10px;
+	font-size: 14px;
 }

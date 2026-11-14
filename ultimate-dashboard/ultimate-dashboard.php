@@ -2,10 +2,12 @@
 /**
  * Plugin Name: Ultimate Dashboard
  * Plugin URI: https://ultimatedashboard.io/
- * Description: Create a custom Dashboard and give the WordPress admin area a more meaningful use.
- * Version: 3.8.18
+ * Description: Replace the default dashboard widgets with your own, customize the login screen, change the login URL & clean up the WordPress admin area.
+ * Version: 4.0
+ * Requires at least: 5.0
+ * Requires PHP: 7.4
  * Author: David Vongries
- * Author URI: https://davidvongries.com/
+ * Author URI: https://mapsteps.com
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: ultimate-dashboard
@@ -18,7 +20,7 @@ defined( 'ABSPATH' ) || die( "Can't access directly" );
 // Plugin constants.
 define( 'ULTIMATE_DASHBOARD_PLUGIN_DIR', rtrim( plugin_dir_path( __FILE__ ), '/' ) );
 define( 'ULTIMATE_DASHBOARD_PLUGIN_URL', rtrim( plugin_dir_url( __FILE__ ), '/' ) );
-define( 'ULTIMATE_DASHBOARD_PLUGIN_VERSION', '3.8.18' );
+define( 'ULTIMATE_DASHBOARD_PLUGIN_VERSION', '4.0' );
 define( 'ULTIMATE_DASHBOARD_PLUGIN_FILE', plugin_basename( __FILE__ ) );
 
 // Admin menu specific support.
@@ -29,10 +31,12 @@ udb_admin_menu_not_doing_ajax();
 require __DIR__ . '/helpers/class-screen-helper.php';
 require __DIR__ . '/helpers/class-color-helper.php';
 require __DIR__ . '/helpers/class-widget-helper.php';
+require __DIR__ . '/helpers/class-icon-helper.php';
 require __DIR__ . '/helpers/class-content-helper.php';
 require __DIR__ . '/helpers/class-user-helper.php';
 require __DIR__ . '/helpers/class-array-helper.php';
 require __DIR__ . '/helpers/class-admin-bar-helper.php';
+require __DIR__ . '/helpers/class-login-url-helper.php';
 
 // Base module.
 require __DIR__ . '/modules/base/class-base-module.php';

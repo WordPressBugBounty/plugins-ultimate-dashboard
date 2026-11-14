@@ -20,47 +20,20 @@ return function ( $module ) {
 		// Select2.
 		wp_enqueue_script( 'select2', ULTIMATE_DASHBOARD_PLUGIN_URL . '/assets/js/select2.min.js', array( 'jquery' ), ULTIMATE_DASHBOARD_PLUGIN_VERSION, true );
 
-		// Dashicons picker.
+		// Icon picker. The old Dashicons picker stays loaded: PRO's scripts depend on it.
+		wp_enqueue_script( 'icon-picker' );
 		wp_enqueue_script( 'dashicons-picker', ULTIMATE_DASHBOARD_PLUGIN_URL . '/assets/js/dashicons-picker.js', array( 'jquery' ), ULTIMATE_DASHBOARD_PLUGIN_VERSION, true );
 
 		// Template tags.
 		wp_enqueue_script( 'udb-admin', ULTIMATE_DASHBOARD_PLUGIN_URL . '/assets/js/template-tags.js', array( 'jquery' ), ULTIMATE_DASHBOARD_PLUGIN_VERSION, true );
 
 		// Admin menu.
-		wp_enqueue_script( 'udb-admin-bar', ULTIMATE_DASHBOARD_PLUGIN_URL . '/modules/admin-bar/assets/js/admin-bar.js', array( 'jquery', 'dashicons-picker', 'jquery-ui-sortable' ), ULTIMATE_DASHBOARD_PLUGIN_VERSION, true );
+		wp_enqueue_script( 'udb-admin-bar', ULTIMATE_DASHBOARD_PLUGIN_URL . '/modules/admin-bar/assets/js/admin-bar.js', array( 'jquery', 'dashicons-picker', 'jquery-ui-sortable', 'wp-escape-html' ), ULTIMATE_DASHBOARD_PLUGIN_VERSION, true );
 
 		// Visibility.
 		wp_enqueue_script( 'udb-admin-bar-visibility', ULTIMATE_DASHBOARD_PLUGIN_URL . '/modules/admin-bar/assets/js/admin-bar-visibility.js', array( 'jquery' ), ULTIMATE_DASHBOARD_PLUGIN_VERSION, true );
 
-		/**
-		 * These codes are not being used currently.
-		 * But leave it here because in the future, if requested, it would be used for
-		 * "hide menu item for specific role(s) / user(s)" functionality (inside dropdowns).
-		 */
-		// $wp_roles   = wp_roles();
-		// $role_names = $wp_roles->role_names;
-		// $roles      = array();
-
-		// foreach ( $role_names as $role_key => $role_name ) {
-		// array_push(
-		// $roles,
-		// array(
-		// 'id'   => $role_key,
-		// 'text' => $role_name,
-		// )
-		// );
-		// }
-
 		$admin_bar_data = array(
-			/**
-			 * These codes are not being used currently.
-			 * But leave it here because in the future, if requested, it would be used for
-			 * "hide menu item for specific role(s) / user(s)" functionality (inside dropdowns).
-			 */
-			// 'nonces'    => array(
-			// 'getUsers' => wp_create_nonce( 'udb_admin_bar_get_users' ),
-			// ),
-			// 'roles'     => $roles,
 			'templates' => array(
 				'menuList'    => require __DIR__ . '/../templates/menu-list.php',
 				'submenuList' => require __DIR__ . '/../templates/submenu-list.php',
@@ -79,9 +52,10 @@ return function ( $module ) {
 			'udb-admin-bar-visibility',
 			'udbAdminBarVisibility',
 			array(
-				'nonce'   => wp_create_nonce( 'udb_admin_bar_save_remove_by_roles' ),
-				'action'  => 'udb_admin_bar_save_remove_by_roles',
-				'ajaxURL' => admin_url( 'admin-ajax.php' ),
+				'nonce'     => wp_create_nonce( 'udb_admin_bar_save_remove_by_roles' ),
+				'action'    => 'udb_admin_bar_save_remove_by_roles',
+				'ajaxURL'   => admin_url( 'admin-ajax.php' ),
+				'errorText' => __( 'Saving failed. Please reload the page and try again.', 'ultimate-dashboard' ),
 			)
 		);
 

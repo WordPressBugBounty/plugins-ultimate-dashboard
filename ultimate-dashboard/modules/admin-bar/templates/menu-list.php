@@ -25,8 +25,8 @@ ob_start();
 			{frontend_only_indicator}
 			{group_indicator}
 			{trash_icon}
-			<span class="dashicons dashicons-{hidden_icon} hide-menu"></span>
-			<span class="dashicons dashicons-arrow-down-alt2 expand-menu"></span>
+			<button type="button" class="dashicons dashicons-{hidden_icon} hide-menu" title="<?php esc_attr_e( 'Show/hide', 'ultimate-dashboard' ); ?>" aria-label="<?php esc_attr_e( 'Show/hide', 'ultimate-dashboard' ); ?>"></button>
+			<button type="button" class="button expand-menu"><?php esc_html_e( 'Edit', 'ultimate-dashboard' ); ?></button>
 		</div>
 	</div><!-- .udb-menu-builder--control-panel -->
 
@@ -127,11 +127,13 @@ ob_start();
 						-->
 
 						<div class="field {menu_icon_field_is_hidden}">
-							<label for="menu_icon_{default_menu_id}" class="label udb-menu-builder--label">
+							<label for="menu_icon_button_{default_menu_id}" class="label udb-menu-builder--label">
 								<?php esc_html_e( 'Menu Icon', 'ultimate-dashboard' ); ?>
 							</label>
-							<div class="control">
-								<input type="text" class="udb-menu-builder--text-field udb-menu-builder--icon-field dashicons-picker" data-width="100%" name="menu_icon_{default_menu_id}" id="menu_icon_{default_menu_id}" value="{menu_icon}" placeholder="<?php esc_attr_e( 'Choose an icon', 'ultimate-dashboard' ); ?>" data-name="menu_icon" {menu_icon_is_disabled} />
+							<div class="udb-icon-field" data-icon-set="dashicons" data-value="name" data-sync>
+								<button type="button" class="icon-picker" id="menu_icon_button_{default_menu_id}" aria-label="<?php esc_attr_e( 'Change icon', 'ultimate-dashboard' ); ?>" {menu_icon_is_disabled}><i aria-hidden="true"></i></button>
+								<input type="hidden" class="udb-menu-builder--icon-field" name="menu_icon_{default_menu_id}" id="menu_icon_{default_menu_id}" value="{menu_icon}" data-name="menu_icon" {menu_icon_is_disabled}>
+								<button type="button" class="button-link icon-picker-clear"><?php esc_html_e( 'Remove icon', 'ultimate-dashboard' ); ?></button>
 							</div>
 						</div>
 
@@ -139,7 +141,7 @@ ob_start();
 					</div><!-- .udb-menu-builder--fields -->
 				</div><!-- #udb-menu-builder--settings-tab -->
 				<div id="udb-menu-builder--submenu-tab--{default_menu_id}" class="udb-menu-builder--tab-content-item udb-menu-builder--edit-area">
-					<ul class="udb-menu-builder--menu-list udb-menu-builder--submenu-list" data-menu-type="submenu" data-submenu-level="1">
+					<ul class="udb-menu-builder--menu-list udb-menu-builder--submenu-list" data-menu-type="submenu" data-submenu-level="1" data-empty-text="<?php esc_attr_e( 'No submenu items.', 'ultimate-dashboard' ); ?>">
 						{submenu_template}
 					</ul>
 

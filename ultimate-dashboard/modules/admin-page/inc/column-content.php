@@ -6,6 +6,7 @@
  */
 
 use Udb\AdminPage\Admin_Page_Module;
+use Udb\Helpers\Icon_Helper;
 
 defined( 'ABSPATH' ) || die( "Can't access directly" );
 
@@ -26,13 +27,14 @@ return function ( $module, $column, $post_id ) {
 			$is_active = get_post_meta( $post_id, 'udb_is_active', true );
 			?>
 
-			<div class="heatbox-wrap status-switch">
+			<div class="heatbox-wrap status-switch" data-error="<?php esc_attr_e( 'An error occurred while saving.', 'ultimate-dashboard' ); ?>">
 				<label for="udb_is_active_<?php echo esc_attr( $post_id ); ?>" class="toggle-switch">
 					<input
 						type="checkbox"
 						name="udb_is_active"
 						id="udb_is_active_<?php echo esc_attr( $post_id ); ?>"
 						value="1"
+						data-action="udb_admin_page_change_active_status"
 						data-nonce="<?php echo esc_attr( wp_create_nonce( 'udb_admin_page_' . $post_id . '_change_active_status' ) ); ?>"
 						data-post-id="<?php echo esc_attr( $post_id ); ?>"
 						<?php checked( $is_active, 1 ); ?>
@@ -40,6 +42,10 @@ return function ( $module, $column, $post_id ) {
 					<div class="switch-track">
 						<div class="switch-thumb"></div>
 					</div>
+					<span class="screen-reader-text"><?php echo esc_html( get_the_title( $post_id ) ); ?></span>
+				</label>
+				<span class="heatbox-notice is-error" role="alert" hidden></span>
+			</div>
 				</label>
 			</div>
 
@@ -92,10 +98,16 @@ return function ( $module, $column, $post_id ) {
 			break;
 
 		case 'icon':
-			$icon_class = get_post_meta( $post_id, 'udb_menu_icon', true );
-			$icon_class = $icon_class ? $icon_class : 'dashicons dashicons-no is-empty';
+			if ( 'submenu' === $menu_type ) {
+				echo esc_html__( 'None', 'ultimate-dashboard' );
+				break;
+			}
 
-			echo ( 'submenu' === $menu_type ? esc_html__( 'None', 'ultimate-dashboard' ) : wp_kses_post( '<i class="' . esc_attr( $icon_class ) . '"></i>' ) );
+			$icon = get_post_meta( $post_id, 'udb_menu_icon', true );
+			$icon = $icon ? $icon : 'dashicons dashicons-no is-empty';
+
+			// The icon HTML is built and escaped by the icon helper.
+			echo '<span class="udb-list-icon">' . ( new Icon_Helper() )->html( $icon ) . '</span>'; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped
 			break;
 
 	}

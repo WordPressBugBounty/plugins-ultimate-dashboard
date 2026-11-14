@@ -81,7 +81,6 @@ class Setting_Output extends Base_Output {
 		add_action( 'admin_head', array( self::get_instance(), 'remove_help_tab' ) );
 		add_filter( 'screen_options_show_screen', array( self::get_instance(), 'remove_screen_options_tab' ) );
 		add_action( 'init', array( self::get_instance(), 'remove_admin_bar' ) );
-		add_action( 'admin_init', array( self::get_instance(), 'remove_font_awesome' ) );
 
 	}
 
@@ -134,7 +133,10 @@ class Setting_Output extends Base_Output {
 	 */
 	public function change_dashboard_headline() {
 
-		if ( isset( $GLOBALS['title'] ) && 'Dashboard' !== $GLOBALS['title'] ) {
+		$screen = get_current_screen();
+
+		// Check the screen, not the title: the title is translated on non-English sites.
+		if ( ! $screen || 'dashboard' !== $screen->id ) {
 			return;
 		}
 
@@ -144,7 +146,7 @@ class Setting_Output extends Base_Output {
 			return;
 		}
 
-		$GLOBALS['title'] = $settings['dashboard_headline'];
+		$GLOBALS['title'] = $settings['dashboard_headline']; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- That's how the headline is changed.
 
 	}
 
@@ -238,8 +240,7 @@ class Setting_Output extends Base_Output {
 			do_action( 'udb_ms_switch_blog' );
 
 			$settings = get_option( 'udb_settings' );
-			// This would never be empty because we already did cheking on `custom_welcome_panel` function above from multisite.
-			$content = $settings['welcome_panel_content'];
+			$content  = isset( $settings['welcome_panel_content'] ) ? $settings['welcome_panel_content'] : '';
 
 			do_action( 'udb_ms_restore_blog' );
 		}
@@ -272,16 +273,10 @@ class Setting_Output extends Base_Output {
 	}
 
 	/**
-	 * Remove Font Awesome.
+	 * Remove Font Awesome: does nothing since 4.0, Font Awesome is gone.
+	 *
+	 * Kept because PRO's multisite settings call it.
 	 */
-	public function remove_font_awesome() {
-
-		$settings = get_option( 'udb_settings' );
-
-		if ( isset( $settings['remove_font_awesome'] ) ) {
-			add_filter( 'udb_font_awesome', '__return_false' );
-		}
-
-	}
+	public function remove_font_awesome() {}
 
 }

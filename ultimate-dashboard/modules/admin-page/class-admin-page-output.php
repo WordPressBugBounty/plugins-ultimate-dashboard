@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || die( "Can't access directly" );
 
 use Udb\Base\Base_Output;
 use Udb\Helpers\Array_Helper;
+use Udb\Helpers\Icon_Helper;
 use WP_Post;
 
 /**
@@ -113,7 +114,7 @@ class Admin_Page_Output extends Base_Output {
 				'post_type'      => 'udb_admin_page',
 				'post_status'    => 'publish',
 				'posts_per_page' => -1,
-				'meta_query'     => array(
+				'meta_query'     => array( // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- Only a few admin pages.
 					array(
 						'key'   => 'udb_is_active',
 						'value' => 1,
@@ -125,12 +126,6 @@ class Admin_Page_Output extends Base_Output {
 				),
 			)
 		);
-
-		if ( ! empty( $posts ) && 'parent' === $menu_type && apply_filters( 'udb_font_awesome', true ) ) {
-			// Font Awesome.
-			wp_enqueue_style( 'font-awesome', ULTIMATE_DASHBOARD_PLUGIN_URL . '/assets/css/font-awesome.min.css', array(), '5.14.0' );
-			wp_enqueue_style( 'font-awesome-shims', ULTIMATE_DASHBOARD_PLUGIN_URL . '/assets/css/v4-shims.min.css', array(), '5.14.0' );
-		}
 
 		foreach ( $posts as &$post ) {
 			$post_id = $post->ID;
@@ -152,6 +147,8 @@ class Admin_Page_Output extends Base_Output {
 			$post->remove_page_margin   = (int) get_post_meta( $post_id, 'udb_remove_page_margin', true );
 			$post->remove_admin_notices = get_post_meta( $post_id, 'udb_remove_admin_notices', true );
 		}
+
+		unset( $post );
 
 		return $posts;
 	}
@@ -185,18 +182,19 @@ class Admin_Page_Output extends Base_Output {
 	 */
 	public function add_menu( $post, $from_multisite = false ) {
 
-		$menu_title  = $post->post_title;
+		// Plain text: HTML in a title (allowed for admins) would leak into the whole admin menu.
+		$menu_title  = wp_strip_all_tags( $post->post_title );
 		$menu_slug   = $post->post_name;
 		$menu_type   = $post->menu_type;
 		$menu_parent = $post->menu_parent;
 		$menu_order  = $post->menu_order;
 		$icon_class  = $post->icon_class;
 
-		if ( false !== stripos( $icon_class, 'dashicons ' ) ) {
-			$menu_icon = str_ireplace( 'dashicons ', '', $icon_class );
-		} else {
-			$menu_icon = 'font-awesome';
-		}
+		$icon_helper = new Icon_Helper();
+		$is_svg_icon = $icon_class && ! $icon_helper->is_dashicon( $icon_class );
+
+		// Lucide icons (and old Font Awesome ones) are added with CSS (add_menu_icon()). "none" keeps WordPress from printing an image for them.
+		$menu_icon = $is_svg_icon ? 'none' : trim( str_ireplace( 'dashicons ', '', (string) $icon_class ) );
 
 		$screen_id = 'udb_page_' . $menu_slug;
 
@@ -213,7 +211,7 @@ class Admin_Page_Output extends Base_Output {
 				$menu_order
 			);
 
-			if ( 'font-awesome' === $menu_icon ) {
+			if ( $is_svg_icon ) {
 				add_action(
 					'admin_head',
 					function () use ( $menu_slug, $icon_class ) {
@@ -281,60 +279,57 @@ class Admin_Page_Output extends Base_Output {
 	}
 
 	/**
-	 * Add FontAwesome menu icon.
+	 * Add a Lucide menu icon: drawn with a CSS mask in the menu's own icon color.
 	 *
 	 * @param string $menu_slug The menu slug.
-	 * @param string $icon_class The icon class.
+	 * @param string $icon_class The saved icon: a Lucide name or old Font Awesome classes.
 	 */
 	public function add_menu_icon( $menu_slug, $icon_class ) {
-		$unicodes = file_get_contents( ULTIMATE_DASHBOARD_PLUGIN_DIR . '/assets/json/fontawesome5-unicodes.json' );
-		$unicodes = json_decode( $unicodes, true );
-		$unicodes = is_null( $unicodes ) ? array() : $unicodes;
 
-		// Compatibility.
-		$unicodes_fa4 = file_get_contents( ULTIMATE_DASHBOARD_PLUGIN_DIR . '/assets/json/fontawesome4-unicodes.json' );
-		$unicodes_fa4 = json_decode( $unicodes_fa4, true );
-		$unicodes_fa4 = is_null( $unicodes_fa4 ) ? array() : $unicodes_fa4;
-
-		$icon_unicode = '\f013';
-
-		if ( isset( $unicodes[ $icon_class ] ) ) {
-			$icon_unicode = $unicodes[ $icon_class ];
-		} elseif ( isset( $unicodes_fa4[ $icon_class ] ) ) {
-			$icon_unicode = $unicodes_fa4[ $icon_class ];
-		}
+		// The data URL is fully percent-encoded: no quotes or parentheses that could end the CSS value.
+		$mask = 'url(' . ( new Icon_Helper() )->mask_url( $icon_class ) . ')';
 		?>
 
 		<style>
-		#toplevel_page_udb_page_<?php echo esc_attr( $menu_slug ); ?> .wp-menu-image::before {
-			content: "<?php echo esc_attr( $icon_unicode ); ?>";
-
-			<?php if ( false !== stripos( $icon_class, 'fab ' ) ) : ?>
-				font-family: "Font Awesome 5 Brands";
-			<?php else : ?>
-				font-family: "Font Awesome 5 Free";
-			<?php endif; ?>
-
-			<?php if ( false !== stripos( $icon_class, 'fas ' ) ) : ?>
-				font-weight: 900;
-			<?php elseif ( false !== stripos( $icon_class, 'far ' ) ) : ?>
-				font-weight: 400;
-			<?php endif; ?>
+		#adminmenu #toplevel_page_udb_page_<?php echo esc_attr( $menu_slug ); ?> div.wp-menu-image::before {
+			content: "";
+			display: block;
+			box-sizing: border-box;
+			width: 20px;
+			height: 20px;
+			margin: 7px auto 0;
+			padding: 0;
+			background-color: currentColor;
+			-webkit-mask: <?php echo esc_attr( $mask ); ?> center / 20px 20px no-repeat;
+			mask: <?php echo esc_attr( $mask ); ?> center / 20px 20px no-repeat;
 		}
 		</style>
 
 		<?php
+
 	}
 
 	/**
 	 * Prevent admin pages from being accessed from frontend.
 	 */
 	public function restrict_frontend() {
-		if ( is_user_logged_in() || ! is_singular( 'udb_admin_page' ) ) {
+		if ( ! is_singular( 'udb_admin_page' ) ) {
+			return;
+		}
+
+		/**
+		 * Filters whether the current visitor may see an admin page on the frontend.
+		 * Default: logged-in users only (PRO also allows its signed iframe links).
+		 *
+		 * @param bool         $allowed Whether the visitor may see the page.
+		 * @param WP_Post|null $post The admin page.
+		 */
+		if ( apply_filters( 'udb_admin_page_frontend_allowed', is_user_logged_in(), get_queried_object() ) ) {
 			return;
 		}
 
 		wp_safe_redirect( home_url() );
+		exit;
 	}
 
 }

@@ -22,8 +22,8 @@ ob_start();
 			{frontend_only_indicator}
 			{group_indicator}
 			{trash_icon}
-			<span class="dashicons dashicons-{hidden_icon} hide-menu"></span>
-			<span class="dashicons dashicons-arrow-down-alt2 expand-menu"></span>
+			<button type="button" class="dashicons dashicons-{hidden_icon} hide-menu" title="<?php esc_attr_e( 'Show/hide', 'ultimate-dashboard' ); ?>" aria-label="<?php esc_attr_e( 'Show/hide', 'ultimate-dashboard' ); ?>"></button>
+			<button type="button" class="button expand-menu"><?php esc_html_e( 'Edit', 'ultimate-dashboard' ); ?></button>
 		</div>
 	</div><!-- .udb-menu-builder--control-panel -->
 
@@ -126,7 +126,7 @@ ob_start();
 					</div><!-- .udb-menu-builder--fields -->
 				</div><!-- #udb-menu-builder--settings-tab -->
 				<div id="udb-menu-builder--submenu-tab--{default_submenu_id}" class="udb-menu-builder--tab-content-item udb-menu-builder--edit-area {submenu_tab_is_hidden}">
-					<ul class="udb-menu-builder--menu-list udb-menu-builder--submenu-list" data-menu-type="submenu" data-submenu-level="{submenu_next_level}">
+					<ul class="udb-menu-builder--menu-list udb-menu-builder--submenu-list" data-menu-type="submenu" data-submenu-level="{submenu_next_level}" data-empty-text="<?php esc_attr_e( 'No submenu items.', 'ultimate-dashboard' ); ?>">
 						{submenu_template}
 					</ul>
 

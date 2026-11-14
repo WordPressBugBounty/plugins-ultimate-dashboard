@@ -11,71 +11,6 @@
 	display: none;
 }
 
-.CodeMirror-wrap {
-	border: 1px solid #ddd;
-}
-
-.CodeMirror-sizer {
-	margin-left: 46px !important;
-}
-.CodeMirror-linenumbers {
-	width: 29px !important;
-}
-
-/* PRO styling */
-.udb-pro-settings-page-notice {
-	display: inline-block;
-	padding-top: 10px;
-	margin-top: 20px;
-	border-top: 1px solid #ddd;
-}
-
-.udb-pro-settings-page-notice p {
-	font-style: italic;
-	display: block;
-	margin: 0 !important;
-}
-
-.udb-pro-settings-page-notice .button {
-	margin-top: 10px !important;
-}
-
-/* Featured */
-.featured-products > h2 {
-	text-align: center;
-	margin-bottom: 50px;
-	font-size: 24px;
-}
-
-.featured-products .products {
-	display: flex;
-	justify-content: space-between;
-}
-
-.featured-products .products li {
-	width: 32%;
-}
-
-.featured-products .products .subheadline {
-	font-weight: 600;
-	margin-top: -6px;
-}
-
-.featured-products .products img {
-	max-width: 100%;
-}
-
-.featured-products .credit {
-	margin-top: 20px;
-	text-align: center;
-	opacity: 0.5;
-}
-
-/* Specific settings page styles */
-.udb-no-label th {
-	display: none;
-}
-
 /* Heatbox */
 .heatbox {
 	position: relative;
@@ -89,16 +24,30 @@
 	display: none;
 }
 
-.dark-mode .heatbox .heatbox-overlay {
-	background-color: rgba(255, 255, 255, 0.75);
-}
-
+/* White Label off: the box stays white, its settings fade, and a note says why (clicks are blocked). */
 .heatbox .heatbox-overlay {
 	position: absolute;
 	top: 0;
 	left: 0;
-	background-color: rgba(0, 0, 0, 0.1);
+	background-color: rgba(255, 255, 255, 0.6);
+	border-radius: inherit;
 	width: 100%;
 	height: 100%;
 	z-index: 100;
+}
+
+/* The box's title stays clear, above the faded layer (only while it's shown, so it never covers a color picker) */
+.heatbox:has(> .heatbox-overlay:not(.is-hidden)) > h2 {
+	position: relative;
+	z-index: 101;
+}
+
+.heatbox .heatbox-overlay-note {
+	position: absolute;
+	top: 0;
+	right: 24px;
+	margin: 0;
+	line-height: 56px;
+	font-size: 13px;
+	color: #646970;
 }

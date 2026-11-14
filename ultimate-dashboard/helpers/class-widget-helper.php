@@ -15,6 +15,25 @@ use Udb\Widget\Widget_Output;
  * Class to setup widget helper.
  */
 class Widget_Helper {
+
+	/**
+	 * The IDs of WordPress' own dashboard widgets.
+	 *
+	 * @var string[]
+	 */
+	const DEFAULT_WIDGETS = array(
+		'dashboard_primary',
+		'dashboard_quick_press',
+		'dashboard_right_now',
+		'dashboard_activity',
+		'dashboard_incoming_links',
+		'dashboard_plugins',
+		'dashboard_secondary',
+		'dashboard_recent_drafts',
+		'dashboard_recent_comments',
+		'dashboard_php_nag',
+		'dashboard_site_health',
+	);
 	/**
 	 * Get all dashboard widgets array.
 	 *
@@ -74,7 +93,16 @@ class Widget_Helper {
 
 					if ( false !== $widget ) {
 
-						$widget['title_stripped'] = wp_strip_all_tags( $widget['title'] );
+						$title = is_string( $widget['title'] ) ? $widget['title'] : '';
+
+						/*
+						 * Some titles also hold text that only shows without JavaScript (WP 7.1's "Quick Draft"
+						 * holds "Your Recent Drafts" in a .hide-if-js element): leave that out of the plain name.
+						 */
+						$title_stripped = preg_replace( '#<(\w+)[^>]*\bclass=["\'][^"\']*\bhide-if-js\b[^"\']*["\'][^>]*>.*?</\1>#is', '', $title );
+						$title_stripped = trim( preg_replace( '/\s+/', ' ', wp_strip_all_tags( (string) $title_stripped ) ) );
+
+						$widget['title_stripped'] = '' !== $title_stripped ? $title_stripped : wp_strip_all_tags( $title );
 						$widget['context']        = $context;
 
 						$flat_widgets[ $id ] = $widget;
@@ -102,19 +130,7 @@ class Widget_Helper {
 
 		$widgets = $this->get_all();
 
-		$default_widgets = array(
-			'dashboard_primary'         => array(),
-			'dashboard_quick_press'     => array(),
-			'dashboard_right_now'       => array(),
-			'dashboard_activity'        => array(),
-			'dashboard_incoming_links'  => array(),
-			'dashboard_plugins'         => array(),
-			'dashboard_secondary'       => array(),
-			'dashboard_recent_drafts'   => array(),
-			'dashboard_recent_comments' => array(),
-			'dashboard_php_nag'         => array(),
-			'dashboard_site_health'     => array(),
-		);
+		$default_widgets = array_fill_keys( self::DEFAULT_WIDGETS, array() );
 
 		$widgets = array_intersect_key( $widgets, $default_widgets );
 
@@ -154,19 +170,7 @@ class Widget_Helper {
 
 		$widgets = $this->get_all();
 
-		$default_widgets = array(
-			'dashboard_primary'         => array(),
-			'dashboard_quick_press'     => array(),
-			'dashboard_right_now'       => array(),
-			'dashboard_activity'        => array(),
-			'dashboard_incoming_links'  => array(),
-			'dashboard_plugins'         => array(),
-			'dashboard_secondary'       => array(),
-			'dashboard_recent_drafts'   => array(),
-			'dashboard_recent_comments' => array(),
-			'dashboard_php_nag'         => array(),
-			'dashboard_site_health'     => array(),
-		);
+		$default_widgets = array_fill_keys( self::DEFAULT_WIDGETS, array() );
 
 		$udb_widgets = array();
 
@@ -280,6 +284,9 @@ class Widget_Helper {
 				$allowed_tags[ $tag ]['style'] = true;
 			}
 		}
+
+		// Inline SVG icons (icon widgets).
+		$allowed_tags = array_merge( $allowed_tags, ( new Icon_Helper() )->allowed_svg_tags() );
 
 		return apply_filters( 'udb_html_widget_allowed_tags', $allowed_tags );
 

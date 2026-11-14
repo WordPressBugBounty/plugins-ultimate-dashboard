@@ -1,0 +1,280 @@
+/**
+ * Dashboard Widgets & Admin Pages lists (WordPress' own list table, only these parts are ours).
+ */
+
+/* An icon (icon widget, admin page menu icon) in a light accent box */
+.udb-list-icon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 32px;
+	height: 32px;
+	margin-inline-end: 10px;
+	vertical-align: middle;
+	color: var(--heatbox-accent);
+	background: var(--heatbox-accent-soft);
+	border-radius: var(--heatbox-radius-control);
+}
+
+.udb-list-icon i {
+	width: auto;
+	height: auto;
+	font-size: 16px;
+}
+
+.udb-list-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* Save error under the "Active" toggle */
+.status-switch .heatbox-notice {
+	display: block;
+	margin-top: 5px;
+}
+
+/**
+ * Heatbox look around WordPress' list (body.udb-post-list): our header on top,
+ * the list in the same 1200px column, the table as a rounded box.
+ */
+
+/* Same column as the header */
+.udb-post-list #screen-meta-links,
+.udb-post-list.has-header .wrap {
+	box-sizing: border-box;
+	max-width: 1200px;
+	margin-inline: auto;
+	padding-inline: var(--heatbox-gap);
+}
+
+.udb-post-list #screen-meta-links {
+	float: none;
+	display: flex;
+	justify-content: flex-end;
+}
+
+/* Screen Options, when open: a box in the same column */
+.udb-post-list #screen-meta {
+	max-width: min(calc(1200px - 2 * var(--heatbox-gap)), calc(100% - 2 * var(--heatbox-gap)));
+	margin: var(--heatbox-gap) auto 0;
+	border-color: var(--heatbox-box-border);
+	border-radius: var(--heatbox-radius);
+}
+
+.udb-post-list.has-header .wrap {
+	margin-top: var(--heatbox-gap);
+	margin-bottom: var(--heatbox-section-gap);
+}
+
+/* The title is in the header */
+.udb-post-list .wrap > .wp-heading-inline {
+	display: none;
+}
+
+/* WordPress' "Add …" (next to the hidden title): the main action, as a large primary button on its own line */
+.udb-post-list .wrap > .page-title-action {
+	position: static;
+	top: auto;
+	box-sizing: border-box;
+	display: flex;
+	width: fit-content;
+	align-items: center;
+	min-height: var(--heatbox-control-height);
+	margin: 0 0 24px;
+	text-decoration: none;
+	padding: 0 18px;
+	font-size: 14px;
+	font-weight: 500;
+	color: var(--heatbox-text-on-accent);
+	background: var(--heatbox-accent);
+	border: 1px solid var(--heatbox-accent);
+	border-radius: var(--heatbox-radius-control);
+	transition: background-color var(--heatbox-transition), border-color var(--heatbox-transition);
+}
+
+.udb-post-list .wrap > .page-title-action:hover {
+	color: var(--heatbox-text-on-accent);
+	background: var(--heatbox-accent-darker);
+	border-color: var(--heatbox-accent-darker);
+}
+
+.udb-post-list .wrap > .page-title-action:focus {
+	color: var(--heatbox-text-on-accent);
+	outline: none;
+	box-shadow: 0 0 0 2px var(--heatbox-surface), 0 0 0 4px var(--heatbox-accent);
+}
+
+/* All / Published / Trash */
+.udb-post-list .wrap .subsubsub {
+	margin: 0;
+	font-size: 14px;
+	line-height: var(--heatbox-control-height);
+}
+
+.udb-post-list .wrap .subsubsub a .count {
+	color: var(--heatbox-text-muted);
+}
+
+.udb-post-list .wrap .subsubsub a.current {
+	color: var(--heatbox-text);
+	font-weight: 600;
+}
+
+/* No search: these lists stay short */
+.udb-post-list .wrap .search-box {
+	display: none;
+}
+
+.udb-post-list .wrap .tablenav {
+	height: auto;
+	margin: 16px 0;
+	padding: 0;
+}
+
+/* Row above the table: bulk actions on the left, item count on the right */
+.udb-post-list .wrap .tablenav.top {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px; /* Same space as between Bulk actions and Apply */
+}
+
+.udb-post-list .wrap .tablenav.top > * {
+	float: none;
+}
+
+.udb-post-list .wrap .tablenav.top .tablenav-pages {
+	margin-left: auto;
+}
+
+.udb-post-list .wrap .tablenav.top br.clear {
+	display: none;
+}
+
+.udb-post-list .wrap .tablenav .actions {
+	display: flex;
+	gap: 8px;
+	padding: 0;
+}
+
+.udb-post-list .wrap .tablenav .tablenav-pages {
+	margin: 0;
+	line-height: var(--heatbox-control-height);
+}
+
+/* Fields & buttons like heatbox's */
+.udb-post-list .wrap select {
+	min-height: var(--heatbox-control-height);
+	margin: 0;
+	padding: 0 12px;
+	font-size: 14px;
+	color: var(--heatbox-text);
+	background-color: var(--heatbox-surface);
+	border: 1px solid var(--heatbox-border);
+	border-radius: var(--heatbox-radius-control);
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.03);
+	transition: border-color var(--heatbox-transition), box-shadow var(--heatbox-transition);
+}
+
+.udb-post-list .wrap select {
+	padding-inline-end: 32px;
+}
+
+.udb-post-list .wrap select:hover {
+	border-color: var(--heatbox-control-border);
+}
+
+.udb-post-list .wrap select:focus {
+	border-color: var(--heatbox-accent);
+	outline: none;
+	box-shadow: 0 0 0 3px var(--heatbox-accent-soft-border);
+}
+
+.udb-post-list .wrap .tablenav .button {
+	min-height: var(--heatbox-control-height);
+	margin: 0;
+	padding: 0 18px;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: calc(var(--heatbox-control-height) - 2px);
+	border-radius: var(--heatbox-radius-control);
+}
+
+.udb-post-list .wrap .tablenav .pagination-links .button {
+	min-width: var(--heatbox-control-height);
+	padding: 0;
+}
+
+/* The table as a box */
+.udb-post-list .wp-list-table {
+	border: 1px solid var(--heatbox-box-border);
+	border-radius: var(--heatbox-radius);
+	box-shadow: var(--heatbox-shadow);
+	overflow: hidden;
+}
+
+.udb-post-list .wp-list-table thead th,
+.udb-post-list .wp-list-table thead td {
+	padding-top: 14px;
+	padding-bottom: 14px;
+	font-weight: 600;
+	color: var(--heatbox-text);
+	border-bottom: 1px solid var(--heatbox-box-border);
+}
+
+.udb-post-list .wp-list-table thead th a {
+	color: var(--heatbox-text);
+}
+
+/* No second header row at the bottom */
+.udb-post-list .wp-list-table tfoot {
+	display: none;
+}
+
+/* Rows split by a line, not striped */
+.udb-post-list .wp-list-table.striped > tbody > :nth-child(odd) {
+	background: var(--heatbox-surface);
+}
+
+.udb-post-list .wp-list-table tbody > tr + tr > * {
+	border-top: 1px solid var(--heatbox-box-border);
+}
+
+.udb-post-list .wp-list-table tbody td,
+.udb-post-list .wp-list-table tbody th {
+	padding-top: 16px;
+	padding-bottom: 16px;
+	vertical-align: middle;
+}
+
+/* Checkbox column: the same room on the left as the box's padding, checkbox on the title's line */
+.udb-post-list .wp-list-table .check-column {
+	width: 48px;
+	padding: 0 0 0 16px;
+}
+
+.udb-post-list .wp-list-table thead .check-column {
+	padding-top: 14px;
+	padding-bottom: 14px;
+	vertical-align: middle;
+}
+
+.udb-post-list .wp-list-table tbody .check-column {
+	padding-top: 18px;
+	vertical-align: top;
+}
+
+.udb-post-list .wp-list-table .check-column input {
+	margin: 0;
+}
+
+/* No gray box around the checkbox on hover */
+.udb-post-list .check-column label:hover,
+.udb-post-list .check-column input:hover + label {
+	background: transparent;
+}
+
+.udb-post-list .wp-list-table .row-title {
+	font-size: 14px;
+	font-weight: 600;
+}

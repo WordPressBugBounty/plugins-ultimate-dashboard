@@ -41,6 +41,9 @@ class Widget_Module extends Base_Module {
 		add_filter( 'post_updated_messages', array( $this, 'update_messages' ) );
 		add_filter( 'manage_udb_widgets_posts_columns', array( $this, 'set_columns' ) );
 		add_action( 'manage_udb_widgets_posts_custom_column', array( $this, 'column_content' ), 10, 2 );
+		add_filter( 'disable_months_dropdown', array( $this, 'disable_months_dropdown' ), 10, 2 );
+		add_filter( 'bulk_actions-edit-udb_widgets', array( $this, 'bulk_actions' ) );
+		add_action( 'in_admin_header', array( $this, 'list_header' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_styles' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_scripts' ) );
 
@@ -85,11 +88,10 @@ class Widget_Module extends Base_Module {
 			3  => __( 'Custom field deleted.', 'ultimate-dashboard' ),
 			4  => __( 'Widget updated.', 'ultimate-dashboard' ),
 			// translators: %s: Date and time of the revision.
-			5  => isset( $_GET['revision'] ) ? sprintf( __( 'Widget restored to revision from %s', 'ultimate-dashboard' ), wp_post_revision_title( absint( $_GET['revision'] ), false ) ) : false,
+			5  => isset( $_GET['revision'] ) ? sprintf( __( 'Widget restored to revision from %s', 'ultimate-dashboard' ), wp_post_revision_title( absint( $_GET['revision'] ), false ) ) : false, // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Same as WP core's messages, only displayed.
 			6  => __( 'Widget published.', 'ultimate-dashboard' ),
 			7  => __( 'Widget saved.', 'ultimate-dashboard' ),
 			8  => __( 'Widget submitted.', 'ultimate-dashboard' ),
-			// translators: %1$s: Scheduled date and time
 			9  => sprintf(
 				/* translators: %1$s: Scheduled date and time */
 				__( 'Widget scheduled for: <strong>%1$s</strong>.', 'ultimate-dashboard' ),
@@ -132,6 +134,54 @@ class Widget_Module extends Base_Module {
 
 		$column_content = require __DIR__ . '/inc/column-content.php';
 		$column_content( $column, $post_id );
+
+	}
+
+	/**
+	 * No month filter on the widget list: it doesn't help for a handful of widgets.
+	 *
+	 * @param bool   $disable   Whether to disable the dropdown.
+	 * @param string $post_type The post type.
+	 *
+	 * @return bool
+	 */
+	public function disable_months_dropdown( $disable, $post_type ) {
+
+		return 'udb_widgets' === $post_type ? true : $disable;
+
+	}
+
+	/**
+	 * Bulk actions on the widget list: only trash, restore and delete (no bulk editing).
+	 *
+	 * @param array $actions The bulk actions.
+	 *
+	 * @return array
+	 */
+	public function bulk_actions( $actions ) {
+
+		return array_intersect_key( $actions, array_flip( array( 'trash', 'untrash', 'delete' ) ) );
+
+	}
+
+	/**
+	 * Heatbox header above the widget list and the widget edit screen.
+	 */
+	public function list_header() {
+
+		global $title;
+
+		if ( $this->screen()->is_widget_list() ) {
+			$header_title = get_post_type_object( 'udb_widgets' )->labels->name;
+		} elseif ( $this->screen()->is_new_widget() || $this->screen()->is_edit_widget() ) {
+			// WordPress' own screen title: Add Dashboard Widget, or Edit Dashboard Widget.
+			$header_title = $title;
+		} else {
+			return;
+		}
+
+		$header = require ULTIMATE_DASHBOARD_PLUGIN_DIR . '/templates/post-header.php';
+		$header( $header_title, __( 'Add your own widgets to the WordPress dashboard.', 'ultimate-dashboard' ) );
 
 	}
 
@@ -191,28 +241,39 @@ class Widget_Module extends Base_Module {
 	public function register_meta_boxes() {
 
 		add_meta_box( 'udb-main-metabox', __( 'Ultimate Dashboard', 'ultimate-dashboard' ), array( $this, 'main_metabox' ), 'udb_widgets', 'normal', 'high' );
-		add_meta_box( 'udb-active-status-metabox', __( 'Active', 'ultimate-dashboard' ), array( $this, 'active_status_metabox' ), 'udb_widgets', 'side', 'high' );
+		// Our Publish box (Active toggle, save, trash) instead of WordPress'.
+		remove_meta_box( 'submitdiv', 'udb_widgets', 'side' );
+		add_meta_box( 'udb-active-status-metabox', __( 'Publish', 'ultimate-dashboard' ), array( $this, 'active_status_metabox' ), 'udb_widgets', 'side', 'high' );
+		add_meta_box( 'udb-widget-type-metabox', __( 'Widget Type', 'ultimate-dashboard' ), array( $this, 'widget_type_metabox' ), 'udb_widgets', 'side', 'high' );
 
 		if ( ! udb_is_pro_active() ) {
 			add_meta_box( 'udb-pro-link-metabox', __( 'PRO Features Available', 'ultimate-dashboard' ), array( $this, 'pro_link_metabox' ), 'udb_widgets', 'side' );
 		}
 
-		$tags_metabox_header  = __( 'Placeholder Tags', 'ultimate-dashboard' );
-		$tags_metabox_header .= '<br><span class="action-status">📋 Copied</span>';
-
-		add_meta_box( 'udb-tags-metabox', $tags_metabox_header, array( $this, 'placeholder_tags_metabox' ), 'udb_widgets', 'side' );
+		add_meta_box( 'udb-tags-metabox', __( 'Placeholder Tags', 'ultimate-dashboard' ), array( $this, 'placeholder_tags_metabox' ), 'udb_widgets', 'side' );
 		add_meta_box( 'udb-position-metabox', __( 'Position', 'ultimate-dashboard' ), array( $this, 'position_metabox' ), 'udb_widgets', 'side' );
-		add_meta_box( 'udb-priority-metabox', __( 'Priority', 'ultimate-dashboard' ), array( $this, 'priority_metabox' ), 'udb_widgets', 'side' );
 
 	}
 
 	/**
-	 * Widget type metabox.
+	 * Main metabox: the box per widget type.
 	 */
 	public function main_metabox() {
 
 		$metabox = require __DIR__ . '/templates/metaboxes/main.php';
 		$metabox();
+
+	}
+
+	/**
+	 * Widget type metabox (sidebar).
+	 *
+	 * @param WP_Post $post The WP_Post object.
+	 */
+	public function widget_type_metabox( $post ) {
+
+		$metabox = require __DIR__ . '/templates/metaboxes/widget-type.php';
+		$metabox( $post );
 
 	}
 
@@ -256,18 +317,6 @@ class Widget_Module extends Base_Module {
 	public function position_metabox( $post ) {
 
 		$metabox = require __DIR__ . '/templates/metaboxes/position.php';
-		$metabox( $post );
-
-	}
-
-	/**
-	 * Priority metabox.
-	 *
-	 * @param WP_Post $post The WP_Post object.
-	 */
-	public function priority_metabox( $post ) {
-
-		$metabox = require __DIR__ . '/templates/metaboxes/priority.php';
 		$metabox( $post );
 
 	}

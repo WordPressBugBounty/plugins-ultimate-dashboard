@@ -18,6 +18,14 @@ use Udb\Helpers\Content_Helper;
 class Setup {
 
 	/**
+	 * Year of the Black Friday sale notice (November 24 – December 1).
+	 * Set by hand each year on purpose, so an old release never shows a sale that isn't running.
+	 *
+	 * @var string
+	 */
+	const BFCM_YEAR = '2026';
+
+	/**
 	 * The class instanace
 	 *
 	 * @var object
@@ -89,7 +97,7 @@ class Setup {
 		 * So in order to make them executed, the PRO version has to run first.
 		 */
 
-		register_activation_hook( ULTIMATE_DASHBOARD_PLUGIN_FILE, array( $this, 'on_plugin_activation' ), 20 );
+		register_activation_hook( ULTIMATE_DASHBOARD_PLUGIN_FILE, array( $this, 'on_plugin_activation' ) );
 
 		add_action( 'plugins_loaded', array( $this, 'load_modules' ), 20 );
 		add_action( 'plugins_loaded', array( $this, 'load_plugin_onboarding_module' ), 20 );
@@ -98,6 +106,7 @@ class Setup {
 		add_action( 'init', array( $this, 'register_action_links' ) );
 		add_action( 'admin_menu', array( $this, 'pro_submenu' ), 20 );
 		add_filter( 'admin_body_class', array( $this, 'admin_body_class' ), 20 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'register_icon_picker' ), 5 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_styles' ), 20 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'admin_scripts' ), 20 );
 		add_action( 'admin_notices', array( self::get_instance(), 'review_notice' ) );
@@ -105,10 +114,8 @@ class Setup {
 		add_action( 'wp_ajax_udb_dismiss_review_notice', array( $this, 'dismiss_review_notice' ) );
 		add_action( 'wp_ajax_udb_dismiss_bfcm_notice', array( $this, 'dismiss_bfcm_notice' ) );
 
-		register_deactivation_hook( ULTIMATE_DASHBOARD_PLUGIN_FILE, array( $this, 'deactivation' ), 20 );
-
 		$content_helper = new Content_Helper();
-		add_filter( 'wp_kses_allowed_html', array( $content_helper, 'allow_iframes_in_html' ) );
+		add_filter( 'wp_kses_allowed_html', array( $content_helper, 'allow_iframes_in_html' ), 10, 2 );
 
 	}
 
@@ -164,13 +171,31 @@ class Setup {
 			'udb_widgets_page_udb_onboarding_wizard',
 		);
 
+		// WordPress' own list screens, with our header above them.
+		$list_screens = array(
+			'edit-udb_widgets',
+			'edit-udb_admin_page',
+		);
+
 		$screen = get_current_screen();
 
-		if ( ! in_array( $screen->id, $screens, true ) ) {
+		// WordPress' own edit screens (new and edit), with our header above them. Not the block editor (PRO's admin pages).
+		$is_block_editor = $screen && method_exists( $screen, 'is_block_editor' ) && $screen->is_block_editor(); // WordPress 5.0+.
+		$edit_screens    = $screen && ! $is_block_editor ? array( 'udb_widgets', 'udb_admin_page' ) : array();
+
+		if ( ! $screen || ! in_array( $screen->id, array_merge( $screens, $list_screens, $edit_screens ), true ) ) {
 			return $classes;
 		}
 
 		$classes .= ' heatbox-admin has-header';
+
+		if ( in_array( $screen->id, $list_screens, true ) ) {
+			$classes .= ' udb-post-list';
+		}
+
+		if ( in_array( $screen->id, $edit_screens, true ) ) {
+			$classes .= ' udb-post-edit';
+		}
 
 		return $classes;
 
@@ -226,7 +251,7 @@ class Setup {
 
 		$modules['Udb\\Widget\\Widget_Module'] = __DIR__ . '/modules/widget/class-widget-module.php';
 
-		if ( ! defined( 'ULTIMATE_DASHBOARD_PRO_PLUGIN_VERSION' ) || ULTIMATE_DASHBOARD_PRO_PLUGIN_VERSION >= '3.1' ) {
+		if ( ! defined( 'ULTIMATE_DASHBOARD_PRO_PLUGIN_VERSION' ) || version_compare( ULTIMATE_DASHBOARD_PRO_PLUGIN_VERSION, '3.1', '>=' ) ) {
 			$modules['Udb\\Feature\\Feature_Module'] = __DIR__ . '/modules/feature/class-feature-module.php';
 		}
 
@@ -303,9 +328,9 @@ class Setup {
 			return;
 		}
 
-		require_once __DIR__ . '/modules/plugin-onboarding/class-plugin-onboarding-module.php';
-		$module = new PluginOnboarding\Plugin_Onboarding_Module();
-		$module->setup( $referrer );
+		require_once __DIR__ . '/modules/onboarding/class-onboarding-module.php';
+		$module = new Onboarding\Onboarding_Module();
+		$module->setup( 'migration', $referrer );
 
 	}
 
@@ -327,9 +352,9 @@ class Setup {
 			add_action( 'current_screen', array( $this, 'redirect_to_onboarding_wizard_page' ), 20 );
 		}
 
-		require_once __DIR__ . '/modules/onboarding-wizard/class-onboarding-wizard-module.php';
-		$module = new OnboardingWizard\Onboarding_Wizard_Module();
-		$module->setup();
+		require_once __DIR__ . '/modules/onboarding/class-onboarding-module.php';
+		$module = new Onboarding\Onboarding_Module();
+		$module->setup( 'wizard' );
 
 	}
 
@@ -380,7 +405,42 @@ class Setup {
 
 		global $submenu;
 
-		$submenu['edit.php?post_type=udb_widgets'][] = array( 'Upgrade to PRO', 'manage_options', 'https://ultimatedashboard.io/pro/' );
+		// phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Adds an external link to the menu, which add_submenu_page() can't do.
+		$submenu['edit.php?post_type=udb_widgets'][] = array( __( 'Upgrade to PRO', 'ultimate-dashboard' ), 'manage_options', 'https://ultimatedashboard.io/pro/' );
+
+	}
+
+	/**
+	 * Register the icon picker (widget, admin page & menu editor screens enqueue it).
+	 *
+	 * The icons are loaded by the picker when it's opened: the Lucide icons, their search words & the Dashicons.
+	 */
+	public function register_icon_picker() {
+
+		$url = function ( $path ) {
+			return add_query_arg( 'ver', ULTIMATE_DASHBOARD_PLUGIN_VERSION, ULTIMATE_DASHBOARD_PLUGIN_URL . $path );
+		};
+
+		wp_register_style( 'icon-picker', ULTIMATE_DASHBOARD_PLUGIN_URL . '/assets/css/icon-picker.css', array(), ULTIMATE_DASHBOARD_PLUGIN_VERSION );
+		wp_register_script( 'icon-picker', ULTIMATE_DASHBOARD_PLUGIN_URL . '/assets/js/icon-picker.js', array(), ULTIMATE_DASHBOARD_PLUGIN_VERSION, true );
+
+		wp_localize_script(
+			'icon-picker',
+			'udbIconPicker',
+			array(
+				'lucideUrl'    => $url( '/assets/icons/lucide.json' ),
+				'tagsUrl'      => $url( '/assets/icons/lucide-tags.json' ),
+				'dashiconsUrl' => $url( '/assets/json/dashicons.json' ),
+				'labels'       => array(
+					'search'    => __( 'Search icons', 'ultimate-dashboard' ),
+					'loading'   => __( 'Loading icons…', 'ultimate-dashboard' ),
+					'none'      => __( 'No icons found.', 'ultimate-dashboard' ),
+					'error'     => __( 'The icons could not be loaded.', 'ultimate-dashboard' ),
+					'lucide'    => __( 'Icons', 'ultimate-dashboard' ),
+					'dashicons' => __( 'WordPress icons', 'ultimate-dashboard' ),
+				),
+			)
+		);
 
 	}
 
@@ -499,8 +559,7 @@ class Setup {
 			return;
 		}
 
-		// Intentional: using manually written string instead of gmdate( 'Y' ).
-		$this_year = '2025';
+		$this_year = self::BFCM_YEAR;
 		$last_year = $this_year - 1;
 		$start     = strtotime( 'november 24th, ' . $this_year );
 		$end       = strtotime( 'december 1st, ' . $this_year );
@@ -526,36 +585,34 @@ class Setup {
 			return;
 		}
 
+		$this->bfcm_notice_markup();
+
+	}
+
+	/**
+	 * The Black Friday notice itself (bfcm_notice() decides when it shows).
+	 */
+	public function bfcm_notice_markup() {
+
 		$bfcm_url = 'https://ultimatedashboard.io/pricing/?utm_source=repository&utm_medium=bfcm_banner&utm_campaign=udb';
 		?>
 
 		<div class="notice udb-notice udb-bfcm-notice notice-info is-dismissible is-permanent-dismissible" data-ajax-action="udb_dismiss_bfcm_notice">
-			<div class="notice-body">
-				<div class="notice-icon">
-					<img src="<?php echo esc_url( ULTIMATE_DASHBOARD_PLUGIN_URL ); ?>/assets/img/logo.png" alt="Ultimate Dashboard Logo">
-				</div>
-				<div class="notice-content">
-					<h2>
-						<?php esc_html_e( 'Black Friday Sale! - Up to 25% Off Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
-					</h2>
-					<p>
-						<?php echo wp_kses_post( __( 'Save big & upgrade to <strong>Ultimate Dashboard PRO</strong>, today!', 'ultimate-dashboard' ) ); ?>
-					</p>
-					<p>
-						<?php esc_html_e( 'But hurry up, the deal will expire soon!', 'ultimate-dashboard' ); ?><br>
-						<em><?php esc_html_e( 'All prices are reduced. No coupon code required.', 'ultimate-dashboard' ); ?></em>
-					</p>
-					<p>
-						<a target="_blank" href="<?php echo esc_url( $bfcm_url ); ?>" class="button button-primary">
-							<?php esc_html_e( 'Learn more', 'ultimate-dashboard' ); ?>
-						</a>
-						<small><?php esc_html_e( '*Only Administrators will see this message.', 'ultimate-dashboard' ); ?></small>
-					</p>
-				</div>
+			<img class="udb-bfcm-notice-logo" src="<?php echo esc_url( ULTIMATE_DASHBOARD_PLUGIN_URL ); ?>/assets/img/logo.png" alt="">
+			<div>
+				<h2><?php esc_html_e( 'Black Friday: up to 25% off Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?></h2>
+				<p><?php esc_html_e( 'All prices are reduced, no coupon code needed. The deal ends soon.', 'ultimate-dashboard' ); ?></p>
+				<p>
+					<a href="<?php echo esc_url( $bfcm_url ); ?>" target="_blank" class="button button-primary">
+						<?php esc_html_e( 'Get the Deal', 'ultimate-dashboard' ); ?>
+						<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'ultimate-dashboard' ); ?></span>
+					</a>
+				</p>
 			</div>
 		</div>
 
 		<?php
+
 	}
 
 	/**
@@ -577,172 +634,9 @@ class Setup {
 			wp_send_json_error( __( 'Invalid request', 'ultimate-dashboard' ) );
 		}
 
-		update_option( 'udb_bfcm_notice_dismissed_2025', 1 );
+		update_option( 'udb_bfcm_notice_dismissed_' . self::BFCM_YEAR, 1 );
 		wp_send_json_success( __( 'BFCM notice has been dismissed.', 'ultimate-dashboard' ) );
 
-	}
-
-	/**
-	 * Plugin deactivation.
-	 */
-	public function deactivation() {
-
-		if ( $this->multisite_supported() ) {
-			$blueprint = get_site_option( 'udb_multisite_blueprint' );
-			$blueprint = $blueprint ? (int) $blueprint : 0;
-
-			$site_ids = get_sites(
-				array(
-					'fields' => 'ids',
-				)
-			);
-
-			if ( $blueprint ) {
-				// When blueprint is set, we get the data removal option from blueprint only.
-				$settings    = get_blog_option( $blueprint, 'udb_settings', array() );
-				$remove_data = isset( $settings['remove-on-uninstall'] ) ? true : false;
-
-				if ( $remove_data ) {
-					foreach ( $site_ids as $site_id ) {
-						if ( $site_id !== $blueprint ) {
-							// Don't restore the data removal option if $site_id is not the blueprint.
-							$this->delete_udb_data( $site_id, false );
-						} else {
-							$this->delete_udb_data( $site_id );
-						}
-					}
-				}
-			} else {
-				// When blueprint is not set, we check the data removal option per-site id.
-				foreach ( $site_ids as $site_id ) {
-					$settings    = get_blog_option( $site_id, 'udb_settings', array() );
-					$remove_data = isset( $settings['remove-on-uninstall'] ) ? true : false;
-
-					if ( $remove_data ) {
-						$this->delete_udb_data( $site_id );
-					}
-				}
-			}
-		} else {
-			$settings    = get_option( 'udb_settings' );
-			$remove_data = isset( $settings['remove-on-uninstall'] ) ? true : false;
-
-			if ( $remove_data ) {
-				$this->delete_udb_data( null );
-			}
-		}
-
-	}
-
-	/**
-	 * Delete free-related options on plugin deactivation.
-	 *
-	 * We still have `udb_multisite_blueprint` option and
-	 * it won't be deleted on both free & pro versions deactivation.
-	 * So that it wouldn't be a problem if user deactivate free version first or pro version first.
-	 * Both versions will be able to get the blueprint value.
-	 *
-	 * So yea, `udb_multisite_blueprint` will stays in the database.
-	 *
-	 * @param int|null $site_id The site id or null.
-	 * @param bool     $restore_removal_option Whether to restore the data removal option or not.
-	 *                                         This is used to handle the case when the free version is de-activated first,
-	 *                                         then the pro version is de-activated later.
-	 */
-	public function delete_udb_data( $site_id, $restore_removal_option = true ) {
-
-		if ( $site_id ) {
-			delete_blog_option( $site_id, 'udb_settings' );
-			delete_blog_option( $site_id, 'udb_branding' );
-			delete_blog_option( $site_id, 'udb_login' );
-			delete_blog_option( $site_id, 'udb_login_redirect' );
-			delete_blog_option( $site_id, 'udb_import' );
-			delete_blog_option( $site_id, 'udb_modules' );
-			delete_blog_option( $site_id, 'udb_recent_admin_menu' );
-
-			delete_blog_option( $site_id, 'udb_compat_widget_type' );
-			delete_blog_option( $site_id, 'udb_compat_widget_status' );
-			delete_blog_option( $site_id, 'udb_compat_delete_login_customizer_page' );
-			delete_blog_option( $site_id, 'udb_compat_settings_meta' );
-			delete_blog_option( $site_id, 'udb_compat_old_option' );
-
-			delete_blog_option( $site_id, 'udb_migration_from_erident' );
-			delete_blog_option( $site_id, 'udb_referred_by_kirki' );
-
-			delete_blog_option( $site_id, 'udb_login_customizer_flush_url' );
-			delete_blog_option( $site_id, 'review_notice_dismissed' );
-
-			/**
-			 * Backwards compatibility
-			 * We will no longer have to remove related data on multisites as from 2022 on we will only show the bfcm notice on the main site.
-			 */
-			delete_blog_option( $site_id, 'udb_bfcm_notice_dismissed' );
-
-			delete_blog_option( $site_id, 'udb_install_date' );
-			delete_blog_option( $site_id, 'udb_plugin_activated' );
-
-			if ( $restore_removal_option && defined( 'ULTIMATE_DASHBOARD_PRO_PLUGIN_VERSION' ) ) {
-				update_blog_option( $site_id, 'udb_settings', array( 'remove-on-uninstall' => 1 ) );
-			}
-		} else {
-			delete_option( 'udb_settings' );
-			delete_option( 'udb_branding' );
-			delete_option( 'udb_login' );
-			delete_option( 'udb_login_redirect' );
-			delete_option( 'udb_import' );
-			delete_option( 'udb_modules' );
-			delete_option( 'udb_recent_admin_menu' );
-
-			delete_option( 'udb_compat_widget_type' );
-			delete_option( 'udb_compat_widget_status' );
-			delete_option( 'udb_compat_delete_login_customizer_page' );
-			delete_option( 'udb_compat_settings_meta' );
-			delete_option( 'udb_compat_old_option' );
-
-			delete_option( 'udb_migration_from_erident' );
-			delete_option( 'udb_referred_by_kirki' );
-
-			delete_option( 'udb_login_customizer_flush_url' );
-			delete_option( 'review_notice_dismissed' );
-
-			delete_option( 'udb_install_date' );
-			delete_option( 'udb_plugin_activated' );
-
-			// These 2 options won't be available in multisite install.
-			delete_option( 'udb_onboarding_wizard_redirect' );
-			delete_option( 'udb_onboarding_wizard_completed' );
-
-			if ( $restore_removal_option && defined( 'ULTIMATE_DASHBOARD_PRO_PLUGIN_VERSION' ) ) {
-				update_option( $site_id, 'udb_settings', array( 'remove-on-uninstall' => 1 ) );
-			}
-		}
-
-	}
-
-	/**
-	 * Check whether plugin is active on multisite or not.
-	 *
-	 * @return bool
-	 */
-	private function is_network_active() {
-		// Load plugin.php if it doesn't already exist.
-		if ( ! function_exists( 'is_plugin_active_for_network' ) || ! function_exists( 'is_plugin_active' ) ) {
-			require_once ABSPATH . '/wp-admin/includes/plugin.php';
-		}
-
-		return ( is_plugin_active_for_network( 'ultimate-dashboard/ultimate-dashboard.php' ) ? true : false );
-	}
-
-	/**
-	 * Check whether multisite actions are supported or not.
-	 *
-	 * But, we don't check for `udb_pro_ms_support` filter here.
-	 * That filter belongs to the pro version.
-	 *
-	 * @return bool
-	 */
-	private function multisite_supported() {
-		return ( $this->is_network_active() ? true : false );
 	}
 
 }

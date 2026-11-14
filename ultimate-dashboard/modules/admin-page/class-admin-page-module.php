@@ -62,9 +62,18 @@ class Admin_Page_Module extends Base_Module {
 		add_filter( 'post_updated_messages', array( $this, 'update_messages' ) );
 		add_filter( 'manage_udb_admin_page_posts_columns', array( $this, 'set_columns' ) );
 		add_action( 'manage_udb_admin_page_posts_custom_column', array( $this, 'column_content' ), 10, 2 );
+		add_filter( 'disable_months_dropdown', array( $this, 'disable_months_dropdown' ), 10, 2 );
+		add_filter( 'bulk_actions-edit-udb_admin_page', array( $this, 'bulk_actions' ) );
+		add_action( 'in_admin_header', array( $this, 'list_header' ) );
 		add_action( 'do_meta_boxes', array( $this, 'remove_metaboxes' ) );
 
 		add_filter( 'template_include', array( $this, 'include_template' ), 1 );
+
+		// Admin pages are public (page builders need it), but they're not content for search engines.
+		add_filter( 'wp_sitemaps_post_types', array( $this, 'exclude_from_sitemaps' ) );
+		add_filter( 'wpseo_sitemap_exclude_post_type', array( $this, 'exclude_from_yoast_sitemap' ), 10, 2 );
+		add_filter( 'wp_robots', array( $this, 'noindex' ) );
+		add_action( 'wp_head', array( $this, 'noindex_meta' ), 1 );
 
 		add_action( 'admin_menu', array( $this, 'submenu_page' ) );
 		add_filter( 'submenu_file', array( $this, 'highlight_submenu' ), 10, 2 );
@@ -109,7 +118,7 @@ class Admin_Page_Module extends Base_Module {
 			3  => __( 'Custom field deleted.', 'ultimate-dashboard' ),
 			4  => __( 'Admin Page updated.', 'ultimate-dashboard' ),
 			// translators: %s: Date and time of the revision.
-			5  => isset( $_GET['revision'] ) ? sprintf( __( 'Admin Page restored to revision from %s', 'ultimate-dashboard' ), wp_post_revision_title( absint( $_GET['revision'] ), false ) ) : false,
+			5  => isset( $_GET['revision'] ) ? sprintf( __( 'Admin Page restored to revision from %s', 'ultimate-dashboard' ), wp_post_revision_title( absint( $_GET['revision'] ), false ) ) : false, // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Same as WP core's messages, only displayed.
 			6  => __( 'Admin Page published.', 'ultimate-dashboard' ),
 			7  => __( 'Admin Page saved.', 'ultimate-dashboard' ),
 			8  => __( 'Admin Page submitted.', 'ultimate-dashboard' ),
@@ -192,6 +201,68 @@ class Admin_Page_Module extends Base_Module {
 	}
 
 	/**
+	 * Leave admin pages out of WordPress' sitemaps.
+	 *
+	 * @param array $post_types The post types in the sitemaps.
+	 *
+	 * @return array The post types.
+	 */
+	public function exclude_from_sitemaps( $post_types ) {
+
+		if ( is_array( $post_types ) ) {
+			unset( $post_types['udb_admin_page'] );
+		}
+
+		return $post_types;
+
+	}
+
+	/**
+	 * Leave admin pages out of Yoast SEO's sitemaps.
+	 *
+	 * @param bool   $excluded Whether the post type is excluded.
+	 * @param string $post_type The post type.
+	 *
+	 * @return bool Whether the post type is excluded.
+	 */
+	public function exclude_from_yoast_sitemap( $excluded, $post_type ) {
+
+		return 'udb_admin_page' === $post_type ? true : $excluded;
+
+	}
+
+	/**
+	 * Tell search engines not to index admin pages (WordPress 5.7+).
+	 *
+	 * @param array $robots The robots directives.
+	 *
+	 * @return array The robots directives.
+	 */
+	public function noindex( $robots ) {
+
+		if ( is_array( $robots ) && is_singular( 'udb_admin_page' ) ) {
+			$robots['noindex']  = true;
+			$robots['nofollow'] = true;
+		}
+
+		return $robots;
+
+	}
+
+	/**
+	 * Tell search engines not to index admin pages on WordPress before 5.7 (no "wp_robots" there).
+	 */
+	public function noindex_meta() {
+
+		if ( function_exists( 'wp_robots' ) || ! is_singular( 'udb_admin_page' ) ) {
+			return;
+		}
+
+		echo '<meta name="robots" content="noindex, nofollow">' . "\n";
+
+	}
+
+	/**
 	 * Add "Admin Page" submenu under "Ultimate Dashboard" menu item.
 	 */
 	public function submenu_page() {
@@ -214,7 +285,7 @@ class Admin_Page_Module extends Base_Module {
 		global $parent_file;
 
 		if (
-			in_array(
+			$current_screen && in_array(
 				$current_screen->base,
 				array(
 					'post',
@@ -224,12 +295,62 @@ class Admin_Page_Module extends Base_Module {
 			) && 'udb_admin_page' === $current_screen->post_type
 		) {
 
-			$parent_file  = 'edit.php?post_type=udb_widgets';
+			$parent_file  = 'edit.php?post_type=udb_widgets'; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited -- Highlights the Ultimate Dashboard menu.
 			$submenu_file = 'edit.php?post_type=udb_admin_page';
 
 		}
 
 		return $submenu_file;
+
+	}
+
+	/**
+	 * No month filter on the admin page list: it doesn't help for a handful of pages.
+	 *
+	 * @param bool   $disable   Whether to disable the dropdown.
+	 * @param string $post_type The post type.
+	 *
+	 * @return bool
+	 */
+	public function disable_months_dropdown( $disable, $post_type ) {
+
+		return 'udb_admin_page' === $post_type ? true : $disable;
+
+	}
+
+	/**
+	 * Bulk actions on the admin page list: only trash, restore and delete (no bulk editing).
+	 *
+	 * @param array $actions The bulk actions.
+	 *
+	 * @return array
+	 */
+	public function bulk_actions( $actions ) {
+
+		return array_intersect_key( $actions, array_flip( array( 'trash', 'untrash', 'delete' ) ) );
+
+	}
+
+	/**
+	 * Heatbox header above the admin page list and the admin page edit screen (classic editor only).
+	 */
+	public function list_header() {
+
+		global $title;
+
+		$screen = get_current_screen();
+
+		if ( $this->screen()->is_admin_page_list() ) {
+			$header_title = get_post_type_object( 'udb_admin_page' )->labels->name;
+		} elseif ( ( $this->screen()->is_new_admin_page() || $this->screen()->is_edit_admin_page() ) && $screen && ! ( method_exists( $screen, 'is_block_editor' ) && $screen->is_block_editor() ) ) {
+			// WordPress' own screen title: Add Admin Page, or Edit Admin Page.
+			$header_title = $title;
+		} else {
+			return;
+		}
+
+		$header = require ULTIMATE_DASHBOARD_PLUGIN_DIR . '/templates/post-header.php';
+		$header( $header_title, __( 'Create custom admin pages for your users.', 'ultimate-dashboard' ) );
 
 	}
 
@@ -258,7 +379,14 @@ class Admin_Page_Module extends Base_Module {
 	 */
 	public function register_meta_boxes() {
 
-		add_meta_box( 'udb-active-status-metabox', __( 'Active', 'ultimate-dashboard' ), array( $this, 'active_status_metabox' ), 'udb_admin_page', 'side', 'high' );
+		// Classic editor: our Publish box (Active toggle, save, trash) instead of WordPress'. Block editor (PRO): Active only.
+		$is_block_editor = function_exists( 'use_block_editor_for_post_type' ) && use_block_editor_for_post_type( 'udb_admin_page' );
+
+		if ( ! $is_block_editor ) {
+			remove_meta_box( 'submitdiv', 'udb_admin_page', 'side' );
+		}
+
+		add_meta_box( 'udb-active-status-metabox', $is_block_editor ? __( 'Active', 'ultimate-dashboard' ) : __( 'Publish', 'ultimate-dashboard' ), array( $this, 'active_status_metabox' ), 'udb_admin_page', 'side', 'high' );
 		add_meta_box( 'udb-content-type-metabox', __( 'Content Type', 'ultimate-dashboard' ), array( $this, 'content_type_metabox' ), 'udb_admin_page', 'side', 'high' );
 
 		if ( ! udb_is_pro_active() ) {
@@ -267,7 +395,7 @@ class Admin_Page_Module extends Base_Module {
 
 		add_meta_box( 'udb-menu-metabox', __( 'Menu Attributes', 'ultimate-dashboard' ), array( $this, 'menu_metabox' ), 'udb_admin_page', 'side' );
 		add_meta_box( 'udb-html-metabox', __( 'HTML', 'ultimate-dashboard' ), array( $this, 'html_metabox' ), 'udb_admin_page', 'normal', 'high' );
-		add_meta_box( 'udb-display-metabox', __( 'Display Options', 'ultimate-dashboard' ), array( $this, 'display_metabox' ), 'udb_admin_page', 'normal' );
+		add_meta_box( 'udb-display-metabox', __( 'Display Options', 'ultimate-dashboard' ), array( $this, 'display_metabox' ), 'udb_admin_page', 'side' );
 		add_meta_box( 'udb-advanced-metabox', __( 'Advanced', 'ultimate-dashboard' ), array( $this, 'advanced_metabox' ), 'udb_admin_page', 'normal' );
 
 	}

@@ -30,15 +30,44 @@
 	margin-bottom: 5px;
 }
 
-/* Icon preview */
-#udb-main-metabox .icon-preview i {
-	height: 120px;
-	width: 120px;
-	font-size: 36px;
-	line-height: 120px;
-	border-radius: 2px;
-	text-align: center;
-	background: #eee;
+/* Icon widget: a larger icon button with the tooltip next to it, same height */
+.udb-icon-row {
+	display: flex;
+	gap: 16px;
+}
+
+.udb-icon-row-tooltip {
+	flex: 1;
+	min-width: 0;
+}
+
+.udb-icon-row .icon-picker {
+	width: 72px;
+	height: 72px;
+}
+
+.udb-icon-row .icon-picker i {
+	font-size: 32px;
+}
+
+.udb-icon-row .icon-picker svg {
+	width: 32px;
+	height: 32px;
+}
+
+#udb-main-metabox .udb-icon-row textarea {
+	display: block;
+	height: 72px;
+	resize: vertical;
+}
+
+/* The picker opens at its full width here, not the icon column's */
+.udb-icon-row .icon-picker-container {
+	max-width: none;
+}
+
+#udb-main-metabox input.small-text {
+	width: 100px;
 }
 
 /* Input fields */
@@ -48,7 +77,8 @@
 #udb-main-metabox input[type="email"],
 #udb-main-metabox input[type="url"],
 #udb-main-metabox textarea,
-#udb-main-metabox select {
+#udb-main-metabox select,
+#udb-widget-type-metabox select {
 	width: 100%;
 }
 
@@ -66,24 +96,38 @@
 	display: none;
 }
 
-/* CodeMirror fix */
-#udb-main-metabox .CodeMirror-wrap {
-	border: 1px solid #ddd;
+/* Position box: column and priority */
+.udb-position-group label {
+	display: block;
+	margin-bottom: 6px;
 }
 
-#udb-main-metabox .CodeMirror-sizer {
-	margin-left: 46px !important;
+.udb-position-group + .udb-position-group {
+	margin-top: 12px;
 }
 
-#udb-main-metabox .CodeMirror-linenumbers {
-	width: 29px !important;
+.udb-position-label {
+	margin: 0 0 6px;
+	font-weight: 600;
 }
 
-/* PRO metabox */
-.udb-pro-metabox-content li {
-	list-style: disc;
-	margin-left: 15px;
+/* Placeholder Tags box (a normal WordPress box): clickable tags */
+#udb-tags-metabox .tags-wrapper {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
 }
+
+#udb-tags-metabox code {
+	margin: 0;
+	cursor: pointer;
+}
+
+#udb-tags-metabox code:hover,
+#udb-tags-metabox code.is-copied {
+	color: var(--heatbox-accent);
+}
+
 
 /* User role & user access metabox */
 .select2-container {

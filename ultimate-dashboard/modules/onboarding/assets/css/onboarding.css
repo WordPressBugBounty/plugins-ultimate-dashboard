@@ -1,0 +1,103 @@
+/**
+ * Onboarding: the Setup Wizard and the short "Setup" for users coming from other plugins.
+ *
+ * The page is heatbox (header, box, buttons, toggles, fields). This file only adds the wizard's own parts.
+ */
+
+/* ==========================================================================
+   Layout.
+   ========================================================================== */
+
+.udb-onboarding-container {
+	max-width: 460px;
+}
+
+.udb-onboarding h3 {
+	margin: 20px 0 10px;
+}
+
+.udb-onboarding-illustration {
+	display: block;
+	width: 200px;
+	max-width: 100%;
+	margin: 0 auto 20px;
+}
+
+/* ==========================================================================
+   Toggle rows: label on the left, toggle on the right, the whole row clickable.
+   ========================================================================== */
+
+.udb-onboarding-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 10px 0;
+	border-top: 1px solid var(--heatbox-box-border);
+	cursor: pointer;
+}
+
+.udb-onboarding-row .toggle-switch {
+	flex-shrink: 0;
+}
+
+/* Roles: two columns, so sites with many roles don't get a long list */
+.udb-onboarding-roles {
+	columns: 2;
+	column-gap: 20px;
+}
+
+/* ==========================================================================
+   Fields: label above the field.
+   ========================================================================== */
+
+.udb-onboarding-field {
+	margin: 20px 0;
+}
+
+.udb-onboarding-field label {
+	display: block;
+	margin-bottom: 5px;
+	font-weight: 600;
+}
+
+.udb-onboarding-field .description {
+	margin: 10px 0 0;
+}
+
+/* ==========================================================================
+   Buttons.
+   ========================================================================== */
+
+.udb-onboarding-actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+/* Last step: both buttons side by side, half the width each (stacked when they don't fit) */
+[data-udb-step="finished"] .udb-onboarding-actions .button {
+	flex: 1 1 0;
+	min-width: max-content;
+	justify-content: center;
+	text-align: center;
+}
+
+/* Skip, step count and Next below the steps */
+.udb-onboarding-footer {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding: 15px var(--heatbox-box-padding);
+	border-top: 1px solid var(--heatbox-box-border);
+}
+
+.udb-onboarding-progress {
+	color: var(--heatbox-text-muted);
+}
+
+.udb-onboarding-skip-all {
+	text-align: center;
+}

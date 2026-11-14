@@ -25,12 +25,6 @@ return function ( $module ) {
 	$parsed_menu = ! $saved_menu ? $existing_menu : $module->parse_menu( $saved_menu, $existing_menu );
 	$parsed_menu = $module->parse_frontend_items( $parsed_menu );
 
-	// error_log( "existingMenu:\n" . print_r( $existing_menu, true ) );
-
-	// error_log( "parsedMenu:\n" . print_r( $parsed_menu, true ) );
-
-	// error_log( "builderItems:\n" . print_r( $module->to_builder_format( $parsed_menu ), true ) );
-
 	wp_localize_script(
 		'udb-admin-bar',
 		'udbAdminBarBuilder',
@@ -52,15 +46,15 @@ return function ( $module ) {
 				<div class="logo-container">
 
 					<div>
-						<span class="title">
+						<h1 class="title">
 							<?php echo esc_html( get_admin_page_title() ); ?>
 							<span class="version"><?php echo esc_html( ULTIMATE_DASHBOARD_PLUGIN_VERSION ); ?></span>
-						</span>
+						</h1>
 						<p class="subtitle"><?php esc_html_e( 'Fully customize the WordPress admin bar.', 'ultimate-dashboard' ); ?></p>
 					</div>
 
 					<div>
-						<img src="<?php echo esc_url( ULTIMATE_DASHBOARD_PLUGIN_URL ); ?>/assets/img/logo.png">
+						<img src="<?php echo esc_url( ULTIMATE_DASHBOARD_PLUGIN_URL ); ?>/assets/img/logo.png" alt="">
 					</div>
 
 				</div>
@@ -70,32 +64,24 @@ return function ( $module ) {
 		</div>
 
 		<div class="heatbox-container heatbox-container-center">
-			<h1 style="display: none;"></h1>
+			<hr class="wp-header-end">
 		</div>
 
 		<div class="heatbox-container heatbox-container-center heatbox-column-container">
 			<div class="heatbox-main">
 
-				<?php if ( ! udb_is_pro_active() ) : ?>
-
-					<div class="udb-pro-upgrade-nag">
-						<p><?php esc_html_e( 'This feature is available in Ultimate Dashboard PRO.', 'ultimate-dashboard' ); ?></p>
-						<a href="https://ultimatedashboard.io/pro/?utm_source=plugin&utm_medium=admin_bar_link&utm_campaign=udb" class="button button-large button-primary" target="_blank">
-							<?php esc_html_e( 'Get Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
-						</a>
-					</div>
-
-				<?php endif; ?>
-
 				<?php do_action( 'udb_admin_bar_before_form' ); ?>
 
 				<form action="options.php" method="post" class="udb-menu-builder--edit-form">
 	
-					<div class="heatbox heatbox-admin-panel udb-menu-builder-box udb-menu-builder-box-panel">
+					<div class="heatbox udb-menu-builder-box udb-menu-builder-box-panel">
 
 						<div class="udb-menu-builder-box--header">
 							<h2 class="udb-menu-builder-box--title">
 								<?php esc_html_e( 'Admin Bar Editor', 'ultimate-dashboard' ); ?>
+								<?php if ( ! udb_is_pro_active() ) : ?>
+									<span class="heatbox-badge">PRO</span>
+								<?php endif; ?>
 							</h2>
 
 							<?php do_action( 'udb_admin_bar_header' ); ?>
@@ -112,23 +98,24 @@ return function ( $module ) {
 							</div>
 						</div>
 
-						<div class="heatbox-footer">
-
-							<?php if ( ! udb_is_pro_active() ) : ?>
-
-								<div class="udb-pro-settings-page-notice udb-pro-admin-bar-notice">
-									<p><?php esc_html_e( 'This feature is available in Ultimate Dashboard PRO.', 'ultimate-dashboard' ); ?></p>
-									<a href="https://ultimatedashboard.io/pro/?utm_source=plugin&utm_medium=admin_bar_link&utm_campaign=udb" class="button button-large button-primary" target="_blank">
-										<?php esc_html_e( 'Get Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
-									</a>
-								</div>
-
-							<?php endif; ?>
-
-							<?php do_action( 'udb_admin_bar_form_footer' ); ?>
-
-						</div>
+						<?php if ( udb_is_pro_active() ) : ?>
+							<div class="heatbox-footer">
+								<?php do_action( 'udb_admin_bar_form_footer' ); ?>
+							</div>
+						<?php endif; ?>
 					</div>
+
+					<?php if ( ! udb_is_pro_active() ) : ?>
+						<div class="heatbox-cta-container is-attached">
+							<div class="heatbox-cta primary">
+								<p><?php esc_html_e( 'This feature is available in Ultimate Dashboard PRO.', 'ultimate-dashboard' ); ?></p>
+								<a href="https://ultimatedashboard.io/pro/?utm_source=plugin&utm_medium=admin_bar_link&utm_campaign=udb" class="button button-primary" target="_blank">
+									<?php esc_html_e( 'Get Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
+									<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'ultimate-dashboard' ); ?></span>
+								</a>
+							</div>
+						</div>
+					<?php endif; ?>
 
 				</form>
 			</div>

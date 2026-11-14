@@ -7,8 +7,7 @@
 
 defined( 'ABSPATH' ) || die( "Can't access directly" );
 
-$wp_roles   = wp_roles();
-$role_names = $wp_roles->role_names;
+$role_names = wp_roles()->role_names;
 
 $saved_menu      = get_option( 'udb_admin_menu', array() );
 $saved_user_data = array();
@@ -17,6 +16,11 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 	if ( false !== stripos( $identifier, 'user_id_' ) ) {
 		$user_id   = absint( str_ireplace( 'user_id_', '', $identifier ) );
 		$user_data = get_userdata( $user_id );
+
+		// The user was deleted after their menu was saved.
+		if ( ! $user_data ) {
+			continue;
+		}
 
 		array_push(
 			$saved_user_data,
@@ -38,15 +42,15 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 			<div class="logo-container">
 
 				<div>
-					<span class="title">
+					<h1 class="title">
 						<?php echo esc_html( get_admin_page_title() ); ?>
 						<span class="version"><?php echo esc_html( ULTIMATE_DASHBOARD_PLUGIN_VERSION ); ?></span>
-					</span>
+					</h1>
 					<p class="subtitle"><?php esc_html_e( 'Fully customize the WordPress admin menu.', 'ultimate-dashboard' ); ?></p>
 				</div>
 
 				<div>
-					<img src="<?php echo esc_url( ULTIMATE_DASHBOARD_PLUGIN_URL ); ?>/assets/img/logo.png">
+					<img src="<?php echo esc_url( ULTIMATE_DASHBOARD_PLUGIN_URL ); ?>/assets/img/logo.png" alt="">
 				</div>
 
 			</div>
@@ -56,23 +60,12 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 	</div>
 
 	<div class="heatbox-container heatbox-container-center">
-		<h1 style="display: none;"></h1>
+		<hr class="wp-header-end">
 	</div>
 
 	<div class="heatbox-container heatbox-container-center heatbox-column-container">
 
 		<div class="heatbox-main">
-			<?php if ( ! udb_is_pro_active() ) : ?>
-
-				<div class="udb-pro-upgrade-nag">
-					<p><?php esc_html_e( 'This feature is available in Ultimate Dashboard PRO.', 'ultimate-dashboard' ); ?></p>
-					<a href="https://ultimatedashboard.io/pro/?utm_source=plugin&utm_medium=admin_menu_link&utm_campaign=udb" class="button button-large button-primary" target="_blank">
-						<?php esc_html_e( 'Get Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
-					</a>
-				</div>
-
-			<?php endif; ?>
-
 			<form action="options.php" method="post" class="udb-menu-builder--edit-form">
 
 				<div class="heatbox udb-menu-builder-box">
@@ -80,6 +73,9 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 					<div class="udb-menu-builder-box--header">
 						<h2 class="udb-menu-builder-box--title">
 							<?php esc_html_e( 'Admin Menu Editor', 'ultimate-dashboard' ); ?>
+							<?php if ( ! udb_is_pro_active() ) : ?>
+								<span class="heatbox-badge">PRO</span>
+							<?php endif; ?>
 						</h2>
 						<div class="udb-menu-builder-box--search-box is-hidden">
 							<select name="udb_admin_menu_user_selector" id="udb_admin_menu_user_selector" class="udb-menu-builder--search-user" data-loading-msg="<?php esc_attr_e( 'Loading Users...', 'ultimate-dashboard' ); ?>" data-placeholder="<?php esc_attr_e( 'Select a User', 'ultimate-dashboard' ); ?>" disabled>
@@ -106,9 +102,9 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 						<ul class="udb-menu-builder--tab-menu udb-menu-builder--role-menu">
 							<?php foreach ( $role_names as $role_key => $role_name ) : ?>
 
-								<li class="udb-menu-builder--tab-menu-item<?php echo ( 'administrator' === $role_key ? ' is-active' : '' ); ?>" data-udb-tab-content="udb-menu-builder--<?php echo esc_html( $role_key ); ?>-edit-area" data-role="<?php echo esc_attr( $role_key ); ?>">
+								<li class="udb-menu-builder--tab-menu-item<?php echo ( 'administrator' === $role_key ? ' is-active' : '' ); ?>" data-udb-tab-content="udb-menu-builder--<?php echo esc_attr( $role_key ); ?>-edit-area" data-role="<?php echo esc_attr( $role_key ); ?>">
 									<button type="button">
-										<?php echo esc_html( ucwords( $role_name ) ); ?>
+										<?php echo esc_html( ucwords( translate_user_role( $role_name ) ) ); ?>
 									</button>
 								</li>
 
@@ -140,11 +136,11 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 						<ul class="udb-menu-builder--tab-menu udb-menu-builder--user-menu">
 							<?php foreach ( $saved_user_data as $index => $user_data ) : ?>
 
-								<li class="udb-menu-builder--tab-menu-item <?php echo ( 0 === $index ? ' is-active' : '' ); ?>" data-udb-tab-content="udb-menu-builder--user-<?php echo esc_html( $user_data['ID'] ); ?>-edit-area" data-user-id="<?php echo esc_html( $user_data['ID'] ); ?>">
+								<li class="udb-menu-builder--tab-menu-item <?php echo ( 0 === $index ? ' is-active' : '' ); ?>" data-udb-tab-content="udb-menu-builder--user-<?php echo absint( $user_data['ID'] ); ?>-edit-area" data-user-id="<?php echo absint( $user_data['ID'] ); ?>">
 									<button type="button">
 										<?php echo esc_html( $user_data['display_name'] ); ?>
 									</button>
-									<i class="dashicons dashicons-no-alt delete-icon udb-menu-builder--remove-tab"></i>
+									<button type="button" class="dashicons dashicons-no-alt delete-icon udb-menu-builder--remove-tab" aria-label="<?php esc_attr_e( 'Remove user', 'ultimate-dashboard' ); ?>"></button>
 								</li>
 
 							<?php endforeach; ?>
@@ -159,7 +155,7 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 
 							<?php foreach ( $saved_user_data as $index => $user_data ) : ?>
 
-								<div id="udb-menu-builder--user-<?php echo esc_html( $user_data['ID'] ); ?>-edit-area" class="udb-menu-builder--tab-content-item udb-menu-builder--workspace udb-menu-builder--user-workspace <?php echo ( 0 === $index ? ' is-active' : '' ); ?>" data-user-id="<?php echo esc_html( $user_data['ID'] ); ?>">
+								<div id="udb-menu-builder--user-<?php echo absint( $user_data['ID'] ); ?>-edit-area" class="udb-menu-builder--tab-content-item udb-menu-builder--workspace udb-menu-builder--user-workspace <?php echo ( 0 === $index ? ' is-active' : '' ); ?>" data-user-id="<?php echo absint( $user_data['ID'] ); ?>">
 									<ul class="udb-menu-builder--menu-list udb-menu-builder-sortable">
 										<!-- to be re-written via js -->
 										<li class="loading"></li>
@@ -179,23 +175,24 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 						</div><!-- .udb-menu-builder--tab-content -->
 					</div><!-- .udb-menu-builder--user-tabs -->
 
-					<div class="heatbox-footer">
-
-						<?php if ( ! udb_is_pro_active() ) : ?>
-
-							<div class="udb-pro-settings-page-notice udb-pro-admin-menu-notice">
-								<p><?php esc_html_e( 'This feature is available in Ultimate Dashboard PRO.', 'ultimate-dashboard' ); ?></p>
-								<a href="https://ultimatedashboard.io/pro/?utm_source=plugin&utm_medium=admin_menu_link&utm_campaign=udb" class="button button-large button-primary" target="_blank">
-									<?php esc_html_e( 'Get Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
-								</a>
-							</div>
-
-						<?php endif; ?>
-
-						<?php do_action( 'udb_admin_menu_form_footer' ); ?>
-
-					</div>
+					<?php if ( udb_is_pro_active() ) : ?>
+						<div class="heatbox-footer">
+							<?php do_action( 'udb_admin_menu_form_footer' ); ?>
+						</div>
+					<?php endif; ?>
 				</div>
+
+				<?php if ( ! udb_is_pro_active() ) : ?>
+					<div class="heatbox-cta-container is-attached">
+						<div class="heatbox-cta primary">
+							<p><?php esc_html_e( 'This feature is available in Ultimate Dashboard PRO.', 'ultimate-dashboard' ); ?></p>
+							<a href="https://ultimatedashboard.io/pro/?utm_source=plugin&utm_medium=admin_menu_link&utm_campaign=udb" class="button button-primary" target="_blank">
+								<?php esc_html_e( 'Get Ultimate Dashboard PRO', 'ultimate-dashboard' ); ?>
+								<span class="screen-reader-text"><?php esc_html_e( '(opens in a new tab)', 'ultimate-dashboard' ); ?></span>
+							</a>
+						</div>
+					</div>
+				<?php endif; ?>
 
 			</form>
 		</div>
@@ -204,7 +201,7 @@ foreach ( $saved_menu as $identifier => $menu_item ) {
 			<div class="heatbox tags-heatbox">
 				<h2>
 					<?php esc_html_e( 'Placeholder Tags', 'ultimate-dashboard' ); ?>
-					<span class="action-status">📋 Copied</span>
+					<span class="action-status"><?php esc_html_e( 'Copied!', 'ultimate-dashboard' ); ?></span>
 				</h2>
 
 				<div class="heatbox-content">

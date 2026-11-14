@@ -8,35 +8,56 @@
 defined( 'ABSPATH' ) || die( "Can't access directly" );
 
 $settings       = get_option( 'udb_settings' );
-$icon_color     = isset( $settings['icon_color'] ) ? $settings['icon_color'] : '#555555';
-$headline_color = isset( $settings['headline_color'] ) ? $settings['headline_color'] : '#23282d';
+$icon_color     = isset( $settings['icon_color'] ) ? strtolower( $settings['icon_color'] ) : '';
+$headline_color = isset( $settings['headline_color'] ) ? strtolower( $settings['headline_color'] ) : '';
+
+// The defaults are WordPress' own text & headline colors (dashboard.css, WordPress), so nothing is printed for them.
+// #555555 & #23282d were the defaults before 4.0: saved untouched, they mean "default" too.
+$icon_color     = in_array( $icon_color, array( '#3c434a', '#555555' ), true ) ? '' : $icon_color;
+$headline_color = in_array( $headline_color, array( '#1d2327', '#23282d' ), true ) ? '' : $headline_color;
+
+// Only valid colors are printed into the CSS.
+$css_helper     = new \Udb\Helpers\Content_Helper();
+$icon_color     = $css_helper->sanitize_color( $icon_color );
+$headline_color = $css_helper->sanitize_color( $headline_color );
 ?>
 
-<?php if ( $icon_color && '#555555' !== $icon_color ) : ?>
+<?php if ( $icon_color ) : ?>
 
-	[id*='ms-udb'] .fa,
-	[id*='ms-udb'] .fas,
-	[id*='ms-udb'] .fab,
-	[id*='ms-udb'] .far,
+	[id*='ms-udb'] .udb-icon,
 	[id*='ms-udb'] .dashicons,
+	[id*='ms-udb'] .udb-info,
 	.udb-content-wrapper {
 		color: <?php echo esc_attr( $icon_color ); ?>;
 	}
 
-	[id*='ms-udb'] .fa:hover,
-	[id*='ms-udb'] .fas:hover,
-	[id*='ms-udb'] .fab:hover,
-	[id*='ms-udb'] .far:hover,
+	[id*='ms-udb'] .udb-icon:hover,
 	[id*='ms-udb'] .dashicons:hover {
 		color: <?php echo esc_attr( $icon_color ); ?>;
 	}
 
 <?php endif; ?>
 
-<?php if ( $headline_color && '#23282d' !== $headline_color ) : ?>
+<?php
+if ( $headline_color ) :
+
+	// The tooltip bubble has the headline color: dark text on a light color, white text otherwise.
+	if ( preg_match( '/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/', $headline_color, $rgb ) ) {
+		$rgb = array( (int) $rgb[1], (int) $rgb[2], (int) $rgb[3] );
+	} else {
+		$rgb = ( new Udb\Helpers\Color_Helper() )->hex_to_rgb( $headline_color );
+	}
+
+	$is_light = ( 0.299 * $rgb[0] + 0.587 * $rgb[1] + 0.114 * $rgb[2] ) / 255 > 0.6;
+	?>
 
 	[id*="ms-udb"] .hndle {
 		color: <?php echo esc_attr( $headline_color ); ?>;
+	}
+
+	[id*="ms-udb"] {
+		--udb-tooltip-bg: <?php echo esc_attr( $headline_color ); ?>;
+		--udb-tooltip-text: <?php echo $is_light ? '#1d2327' : '#fff'; ?>;
 	}
 
 <?php endif; ?>

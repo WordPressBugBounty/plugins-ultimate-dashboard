@@ -11,6 +11,7 @@ defined( 'ABSPATH' ) || die( "Can't access directly" );
 
 use WP_Query;
 use Udb\Base\Base_Output;
+use Udb\Helpers\Icon_Helper;
 use Udb\Helpers\Widget_Helper;
 
 /**
@@ -97,8 +98,7 @@ class Widget_Output extends Base_Output {
 	 */
 	public static function init() {
 
-		$class = new self();
-		$class->setup();
+		self::get_instance()->setup();
 
 	}
 
@@ -137,8 +137,8 @@ class Widget_Output extends Base_Output {
 		$args = array(
 			'post_type'      => 'udb_widgets',
 			'posts_per_page' => 100,
-			'meta_key'       => 'udb_is_active',
-			'meta_value'     => 1,
+			'meta_key'       => 'udb_is_active', // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Only a few widgets.
+			'meta_value'     => 1, // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value
 		);
 
 		$loop = new WP_Query( $args );
@@ -164,6 +164,8 @@ class Widget_Output extends Base_Output {
 			if ( ! $widget_type ) {
 
 				do_action( 'udb_compat_widget_type', $post_id );
+
+				$widget_type = get_post_meta( $post_id, 'udb_widget_type', true );
 
 			}
 
@@ -204,17 +206,20 @@ class Widget_Output extends Base_Output {
 
 				$link = is_string( $link ) ? $link : '';
 
+				// Placeholder tags like {site_url} (listed in the widget's Placeholder Tags box). The protocol check below runs on the result.
+				$link = $this->convert_placeholder_tags( $link );
+
 				if ( 0 === strpos( $link, './wp-admin/' ) ) {
 					// Prevent double wp-admin string ('/wp-admin/wp-admin/') when rendering the link.
 					$link = str_replace( './wp-admin/', './', $link );
 				}
 
 				$output = sprintf(
-					'<a href="%1$s" target="%2$s"><i class="%3$s"></i></a>',
-					// We don't use esc_url() here since $link can be a relative path.
-					esc_attr( $link ),
+					'<a href="%1$s" target="%2$s">%3$s</a>',
+					// Not esc_url(): it would break relative paths (./post-new.php). Still drop unsafe protocols like javascript:.
+					esc_attr( wp_kses_bad_protocol( $link, wp_allowed_protocols() ) ),
 					esc_attr( $target ),
-					esc_attr( $icon )
+					( new Icon_Helper() )->html( $icon )
 				);
 
 				if ( $tooltip ) {
@@ -242,8 +247,16 @@ class Widget_Output extends Base_Output {
 				echo wp_kses( $output, $widget_helper->get_allowed_tags() );
 			};
 
-			// Add metabox.
+			// Add metabox, with its widget type as a class (icon widgets are styled as tiles).
 			add_meta_box( 'ms-udb' . $post_id, $title, $output_callback, 'dashboard', $position, $priority );
+
+			add_filter(
+				'postbox_classes_dashboard_ms-udb' . $post_id,
+				function ( $classes ) use ( $widget_type ) {
+					$classes[] = 'udb-widget-' . sanitize_html_class( $widget_type );
+					return $classes;
+				}
+			);
 
 		endwhile;
 

@@ -148,13 +148,106 @@ class Content_Helper {
 	}
 
 	/**
+	 * Sanitize a color before printing it into CSS.
+	 *
+	 * Accepts hex (#rgb, #rgba, #rrggbb, #rrggbbaa), rgb() / rgba() and plain color keywords.
+	 * Anything else returns an empty string, so a saved value can't break out of its CSS rule.
+	 *
+	 * @param mixed $color The color.
+	 * @return string The color, or an empty string if it's not a valid color.
+	 */
+	public function sanitize_color( $color ) {
+
+		if ( ! is_string( $color ) ) {
+			return '';
+		}
+
+		$color = trim( $color );
+
+		if ( preg_match( '/^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i', $color ) ) {
+			return $color;
+		}
+
+		if ( preg_match( '/^rgba?\(\s*\d{1,3}\s*,\s*\d{1,3}\s*,\s*\d{1,3}\s*(,\s*(\d*\.?\d+%?)\s*)?\)$/i', $color ) ) {
+			return $color;
+		}
+
+		if ( preg_match( '/^[a-z]+$/i', $color ) ) {
+			return $color;
+		}
+
+		return '';
+
+	}
+
+	/**
+	 * Sanitize a plain CSS value (size, position, keyword) before printing it into CSS.
+	 *
+	 * Keeps letters, numbers, spaces and the characters used in sizes and positions (". % # , ( ) -").
+	 * Removes everything that could end a CSS rule or start a new one (; { } : / quotes, < >).
+	 *
+	 * @param mixed $value The value.
+	 * @return string The sanitized value.
+	 */
+	public function sanitize_css_value( $value ) {
+
+		if ( ! is_scalar( $value ) ) {
+			return '';
+		}
+
+		return trim( preg_replace( '/[^a-zA-Z0-9.%#,()\s\-]/', '', (string) $value ) );
+
+	}
+
+	/**
+	 * Sanitize a CSS size (a number with an optional unit), e.g. for the customizer's range controls.
+	 *
+	 * @param mixed $value The value, e.g. "40%" or "320px".
+	 * @return string The size, or an empty string if it's not a valid size.
+	 */
+	public function sanitize_css_size( $value ) {
+
+		if ( ! is_scalar( $value ) ) {
+			return '';
+		}
+
+		$value = trim( (string) $value );
+
+		if ( preg_match( '/^\d*\.?\d+(px|%|em|rem|vw|vh)?$/i', $value ) ) {
+			return $value;
+		}
+
+		return '';
+
+	}
+
+	/**
 	 * Allow iframes & attributes in HTML widget.
 	 *
-	 * @param array $tags The allowed tags & attributes.
+	 * Only for the "post" context, which is what widgets and admin pages use.
+	 * Other contexts (comments, user & term descriptions, "strip" …) stay untouched.
 	 *
-	 * @return array $tags The midified $tags.
+	 * And only when saved by someone who can manage Ultimate Dashboard,
+	 * or when content is displayed in wp-admin (widgets & admin pages are shown to all roles).
+	 * So authors & contributors saving their own posts get WordPress' default rules.
+	 *
+	 * @param array  $tags    The allowed tags & attributes.
+	 * @param string $context The kses context.
+	 *
+	 * @return array $tags The modified $tags.
 	 */
-	public function allow_iframes_in_html( $tags ) {
+	public function allow_iframes_in_html( $tags, $context = 'post' ) {
+
+		if ( 'post' !== $context ) {
+			return $tags;
+		}
+
+		$can_manage = current_user_can( apply_filters( 'udb_settings_capability', 'manage_options' ) );
+		$is_display = is_admin() && isset( $_SERVER['REQUEST_METHOD'] ) && 'GET' === $_SERVER['REQUEST_METHOD'];
+
+		if ( ! $can_manage && ! $is_display ) {
+			return $tags;
+		}
 
 		$tags['iframe'] = array(
 			'align'               => true,

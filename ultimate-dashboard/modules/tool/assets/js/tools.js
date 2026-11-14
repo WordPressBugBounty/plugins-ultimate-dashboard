@@ -1,87 +1,73 @@
-(function ($) {
-	const selectAllButton = document.querySelector(".udb-select-all-modules");
-	const moduleCheckboxes = document.querySelectorAll(".udb-module-checkbox");
+/**
+ * Tools page: the "Select All / Unselect All" button for the export checkboxes (incl. the ones PRO adds).
+ */
+(function () {
+	"use strict";
+
+	adoptAddedCheckboxes();
+
+	const button = document.querySelector(".udb-select-all-modules");
+	const checkboxes = Array.from(document.querySelectorAll(".udb-module-checkbox"));
+
+	if (!button || !checkboxes.length) return;
+
+	const allChecked = () => checkboxes.every((checkbox) => checkbox.checked);
 
 	/**
-	 * @type {HTMLInputElement[]} checkboxes - The checkboxes.
+	 * Show "Unselect All" when everything is checked, otherwise "Select All".
 	 */
-	const checkboxes = [];
-
-	let isAllChecked = false;
-
-	/**
-	 * Check if the checkbox is checked.
-	 *
-	 * @param {HTMLInputElement} el The checkbox element.
-	 * @returns {boolean} Whether the checkbox is checked.
-	 */
-	function isChecked(el) {
-		return el.checked;
+	function updateButton() {
+		button.textContent = allChecked() ? button.dataset.unselect : button.dataset.select;
 	}
 
-	function init() {
-		if (!selectAllButton || !moduleCheckboxes.length) return;
-
-		for (let i = 0; i < moduleCheckboxes.length; i++) {
-			const checkbox = moduleCheckboxes[i];
-			if (!(checkbox instanceof HTMLInputElement)) continue;
-			checkboxes.push(checkbox);
-		}
-
-		if (checkboxes.every(isChecked)) {
-			isAllChecked = true;
-			selectAllButton.innerHTML = "Unselect All";
-		} else {
-			isAllChecked = false;
-			selectAllButton.innerHTML = "Select All";
-		}
-
-		selectAllButton.addEventListener("click", onSelectAllButtonClick);
+	button.addEventListener("click", function () {
+		const check = !allChecked();
 
 		checkboxes.forEach(function (checkbox) {
-			checkbox.addEventListener("change", onCheckboxChange);
+			checkbox.checked = check;
 		});
-	}
+
+		updateButton();
+	});
+
+	checkboxes.forEach(function (checkbox) {
+		checkbox.addEventListener("change", updateButton);
+	});
+
+	updateButton();
 
 	/**
-	 * Event handler for the select all button click.
-	 *
-	 * @param {Event} e The event object.
+	 * Checkboxes added through the "udb_export_fields" hook are printed right in the list.
+	 * Newer PRO prints heatbox's markup (.setting-field); PRO 3.11 prints plain <p><label><input> Text</label></p>,
+	 * which gets heatbox's markup here, in its place.
 	 */
-	function onSelectAllButtonClick(e) {
-		e.preventDefault();
+	function adoptAddedCheckboxes() {
+		const list = document.querySelector(".udb-tools-page .setting-fields");
 
-		if (isAllChecked) {
-			isAllChecked = false;
-			if (selectAllButton) selectAllButton.innerHTML = "Select All";
-		} else {
-			isAllChecked = true;
-			if (selectAllButton) selectAllButton.innerHTML = "Unselect All";
-		}
+		if (!list) return;
 
-		checkboxes.forEach(function (el) {
-			if (isAllChecked) {
-				el.checked = true;
+		list.querySelectorAll("label").forEach(function (label) {
+			const input = label.querySelector('input[type="checkbox"]');
+
+			if (!input || label.classList.contains("checkbox-label")) return;
+
+			const wrapper = label.parentElement;
+			const field = document.createElement("div");
+			const indicator = document.createElement("div");
+
+			field.className = "setting-field";
+			indicator.className = "indicator";
+			label.classList.add("label", "checkbox-label");
+			label.append(input, indicator);
+
+			// In place of the <p> it came in (when that only held it), otherwise at the end of the list.
+			if (wrapper !== list && wrapper.matches("p") && 1 === wrapper.children.length) {
+				wrapper.replaceWith(field);
 			} else {
-				el.checked = false;
+				list.append(field);
 			}
+
+			field.append(label);
 		});
 	}
-
-	/**
-	 * Event handler for the checkbox change event.
-	 *
-	 * @param {Event} e The event object.
-	 */
-	function onCheckboxChange(e) {
-		if (checkboxes.every(isChecked)) {
-			isAllChecked = true;
-			if (selectAllButton) selectAllButton.innerHTML = "Unselect All";
-		} else {
-			isAllChecked = false;
-			if (selectAllButton) selectAllButton.innerHTML = "Select All";
-		}
-	}
-
-	init();
-})(jQuery);
+})();

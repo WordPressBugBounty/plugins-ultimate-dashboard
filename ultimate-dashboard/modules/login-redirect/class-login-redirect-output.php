@@ -9,6 +9,9 @@ namespace Udb\LoginRedirect;
 
 defined( 'ABSPATH' ) || die( "Can't access directly" );
 
+// phpcs:disable WordPress.Security.NonceVerification -- Routes login page requests by their URL; wp-login.php does its own checks.
+// phpcs:disable WordPress.WP.GlobalVariablesOverride.Prohibited -- Sets $pagenow so WordPress treats the new URL as the login page.
+
 use Udb\Base\Base_Output;
 use WP_User;
 use WP_Error;
@@ -31,6 +34,13 @@ class Login_Redirect_Output extends Base_Output {
 	 * @var bool
 	 */
 	public $is_old_login_page = false;
+
+	/**
+	 * Whether current page is the new login page or not.
+	 *
+	 * @var bool
+	 */
+	public $is_new_login_page = false;
 
 	/**
 	 * The new login slug.
@@ -120,6 +130,11 @@ class Login_Redirect_Output extends Base_Output {
 		$this->wp_admin_redirect_slug = isset( $settings['wp_admin_redirect_slug'] ) ? $settings['wp_admin_redirect_slug'] : '';
 		$this->wp_admin_redirect_slug = apply_filters( 'udb_wp_admin_redirect_slug', $this->wp_admin_redirect_slug );
 
+		// With a new login URL, wp-admin must not send logged-out visitors there: default to a "not found" page.
+		if ( ! $this->wp_admin_redirect_slug && $this->new_login_slug ) {
+			$this->wp_admin_redirect_slug = '404';
+		}
+
 		$this->permalink_structure = get_option( 'permalink_structure' );
 
 		// Protect wp-admin if the slug is set in the setting.
@@ -160,7 +175,16 @@ class Login_Redirect_Output extends Base_Output {
 			return;
 		}
 
-		$uri = isset( $_SERVER['REQUEST_URI'] ) ? rawurldecode( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '';
+		global $pagenow;
+
+		/*
+		 * WordPress sets $pagenow from the script that's actually running, before plugins load.
+		 * The new login URL always runs through index.php, so here 'wp-login.php' means
+		 * wp-login.php was requested directly, whatever the URI looks like.
+		 */
+		$is_wp_login_script = 'wp-login.php' === $pagenow;
+
+		$uri = $this->get_request_uri();
 
 		$has_signup_slug   = false !== stripos( $uri, 'wp-signup' );
 		$has_activate_slug = false !== stripos( $uri, 'wp-activate' );
@@ -178,9 +202,8 @@ class Login_Redirect_Output extends Base_Output {
 
 		$has_register_slug = false !== stripos( $uri, 'wp-register.php' );
 
-		global $pagenow;
-
-		if ( ! is_admin() && ( $has_old_slug || site_url( 'wp-login', 'relative' ) === $request_path ) ) {
+		// $is_wp_login_script catches what the URI doesn't (e.g. "/wp-log%69n.php"): fail closed.
+		if ( ! is_admin() && ( $has_old_slug || $is_wp_login_script || site_url( 'wp-login', 'relative' ) === $request_path ) ) {
 			// If current page is old login page, set $pagenow to be index.php, so it's not login page anymore.
 			$pagenow = 'index.php';
 
@@ -189,12 +212,30 @@ class Login_Redirect_Output extends Base_Output {
 		} elseif ( site_url( $this->new_login_slug, 'relative' ) === $request_path || ( ! $using_permalink && $has_new_slug ) ) {
 			// If current page is new login page, let WordPress know if this is a login page.
 			$pagenow = 'wp-login.php';
+
+			$this->is_new_login_page = true;
 		} elseif ( ! is_admin() && ( $has_register_slug || site_url( 'wp-register', 'relative' ) === $request_path ) ) {
 			$pagenow = 'index.php';
 
 			$this->is_old_login_page = true;
 			$_SERVER['REQUEST_URI']  = $this->maybe_trailingslashit( '/' . str_repeat( '-/', 10 ) );
 		}
+
+	}
+
+	/**
+	 * Get the decoded request URI, to compare paths with.
+	 *
+	 * Not passed through sanitize_text_field(): it deletes percent-encoded characters instead of
+	 * decoding them, so "/wp-log%69n.php" would become "/wp-logn.php" while the server runs wp-login.php.
+	 * The value is only compared, never output or stored.
+	 *
+	 * @return string
+	 */
+	public function get_request_uri() {
+
+		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Only compared, see above.
+		return isset( $_SERVER['REQUEST_URI'] ) ? rawurldecode( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
 
 	}
 
@@ -210,7 +251,7 @@ class Login_Redirect_Output extends Base_Output {
 		$login_url = site_url( $this->new_login_slug, $scheme );
 
 		if ( is_multisite() ) {
-			$uri = isset( $_SERVER['REQUEST_URI'] ) ? rawurldecode( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '';
+			$uri = $this->get_request_uri();
 
 			$has_install_slug = false !== stripos( $uri, '/wp-admin/install.php' );
 
@@ -262,14 +303,9 @@ class Login_Redirect_Output extends Base_Output {
 	 */
 	public function protect_wp_admin() {
 
-		if ( isset( $_GET['action'] ) && 'postpass' === $_GET['action'] && isset( $_POST['post_password'] ) ) {
-			return;
-		}
-
 		global $pagenow;
 
-		$uri          = isset( $_SERVER['REQUEST_URI'] ) ? rawurldecode( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '';
-		$request      = wp_parse_url( rawurldecode( $uri ) );
+		$request      = wp_parse_url( $this->get_request_uri() );
 		$request_path = isset( $request['path'] ) ? $request['path'] : '';
 
 		if ( is_admin() && ! is_user_logged_in() && ! wp_doing_ajax() && 'admin-post.php' !== $pagenow && '/wp-admin/options.php' !== $request_path ) {
@@ -284,42 +320,45 @@ class Login_Redirect_Output extends Base_Output {
 	 */
 	public function protect_wp_login() {
 
-		if ( isset( $_GET['action'] ) && 'postpass' === $_GET['action'] && isset( $_POST['post_password'] ) ) {
+		/**
+		 * Let wp-login.php handle the password protected post form (action=postpass).
+		 * Check $_REQUEST (not $_GET) because that's what wp-login.php uses to determine the action,
+		 * and a POST "action" field would override the one in the query string.
+		 */
+		if ( isset( $_REQUEST['action'] ) && 'postpass' === $_REQUEST['action'] && isset( $_POST['post_password'] ) ) {
 			return;
 		}
 
 		global $pagenow;
 
-		$request_uri  = isset( $_SERVER['REQUEST_URI'] ) ? rawurldecode( sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) ) : '';
-		$request      = wp_parse_url( rawurldecode( $request_uri ) );
+		$request      = wp_parse_url( $this->get_request_uri() );
 		$request_path = isset( $request['path'] ) ? $request['path'] : '';
 
 		$query_string     = isset( $_SERVER['QUERY_STRING'] ) ? sanitize_text_field( wp_unslash( $_SERVER['QUERY_STRING'] ) ) : '';
 		$add_query_string = $query_string ? '?' . $query_string : '';
 
-		if ( 'wp-login.php' === $pagenow && $request_path !== $this->maybe_trailingslashit( $request_path ) && $this->permalink_structure ) {
+		// Only the new login URL itself gets the trailing slash redirect, so no other request can be sent to it.
+		if ( $this->is_new_login_page && $request_path !== $this->maybe_trailingslashit( $request_path ) && $this->permalink_structure ) {
 			wp_safe_redirect(
 				$this->maybe_trailingslashit( $this->new_login_url() ) . $add_query_string
 			);
 			exit;
 		} elseif ( $this->is_old_login_page ) {
-			$referer  = wp_get_referer();
+			$referer  = (string) wp_get_referer();
 			$referers = wp_parse_url( $referer );
 
 			$referer_contains_activate_url = false !== stripos( $referer, 'wp-activate.php' );
 
-			if ( $referer_contains_activate_url && ! empty( $referers['query'] ) ) {
+			// Site activation links only exist on multisite (wpmu_activate_signup() isn't loaded on single sites).
+			if ( is_multisite() && $referer_contains_activate_url && ! empty( $referers['query'] ) ) {
 				parse_str( $referers['query'], $referer_queries );
 
-				$signup_key           = $referer_queries['key'];
-				$wpmu_activate_signup = wpmu_activate_signup( $signup_key );
+				$signup_key = isset( $referer_queries['key'] ) ? sanitize_text_field( $referer_queries['key'] ) : '';
 
-				if ( file_exists( WPINC . '/ms-functions.php' ) ) {
-					@require_once WPINC . '/ms-functions.php';
-				}
+				if ( $signup_key && function_exists( 'wpmu_activate_signup' ) ) {
+					$wpmu_activate_signup = wpmu_activate_signup( $signup_key );
 
-				if ( ! empty( $signup_key ) && is_wp_error( $wpmu_activate_signup ) ) {
-					if ( 'already_active' === $wpmu_activate_signup->get_error_code() || 'blog_taken' === $wpmu_activate_signup->get_error_code() ) {
+					if ( is_wp_error( $wpmu_activate_signup ) && in_array( $wpmu_activate_signup->get_error_code(), array( 'already_active', 'blog_taken' ), true ) ) {
 						wp_safe_redirect( $this->new_login_url() . $add_query_string );
 						exit;
 					}
@@ -328,22 +367,18 @@ class Login_Redirect_Output extends Base_Output {
 
 			$this->wp_template_loader();
 		} elseif ( 'wp-login.php' === $pagenow ) {
-			$redirect_to           = admin_url();
-			$requested_redirect_to = isset( $_REQUEST['redirect_to'] ) ? sanitize_url( wp_unslash( $_REQUEST['redirect_to'] ) ) : '';
+			$redirect_to = admin_url();
 
-			if ( is_user_logged_in() ) {
-				$user = wp_get_current_user();
-
-				if ( ! isset( $_REQUEST['action'] ) ) {
-					wp_safe_redirect( $redirect_to );
-					exit;
-				}
+			if ( is_user_logged_in() && ! isset( $_REQUEST['action'] ) ) { // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only routing, wp-login.php does its own checks.
+				wp_safe_redirect( $redirect_to );
+				exit;
 			}
 
 			// Prevent warnings in wp-login.php file by providing these globals.
-			global $user_login, $error, $iterim_login, $action;
+			global $user_login, $error, $interim_login, $action;
 
-			@require_once ABSPATH . 'wp-login.php';
+			// Load the real login page at the new URL. Silenced like other "hide login" plugins: wp-login.php expects to be loaded directly.
+			@require_once ABSPATH . 'wp-login.php'; // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
 			exit;
 		}
 
@@ -603,6 +638,17 @@ class Login_Redirect_Output extends Base_Output {
 		$roles    = property_exists( $user, 'roles' ) ? $user->roles : array();
 
 		if ( empty( $roles ) ) {
+			return $redirect_to;
+		}
+
+		/*
+		 * A specific destination was asked for (a link to an admin screen, an expired session while editing):
+		 * go there. The role redirect is for normal logins without one, or to the admin start page.
+		 */
+		$requested = untrailingslashit( (string) $requested_redirect_to );
+		$generic   = array( '', untrailingslashit( admin_url() ), 'wp-admin', untrailingslashit( site_url( 'wp-admin' ) ) );
+
+		if ( ! in_array( $requested, $generic, true ) ) {
 			return $redirect_to;
 		}
 

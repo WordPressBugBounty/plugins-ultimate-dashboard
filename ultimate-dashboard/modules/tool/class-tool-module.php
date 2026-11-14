@@ -107,30 +107,46 @@ class Tool_Module extends Base_Module {
 	}
 
 	/**
-	 * Add settings.
+	 * Register the export & import form handlers (admin-post.php).
+	 *
+	 * Kept on "admin_init" under this name: PRO's multisite module unhooks it on non-blueprint sites,
+	 * which switches the tools off there. admin-post.php runs "admin_init" before the handlers.
 	 */
 	public function add_settings() {
 
-		// Settings groups.
-		register_setting( 'udb-export-group', 'udb_export', array( 'sanitize_callback' => array( $this, 'process_export' ) ) );
-		register_setting( 'udb-import-group', 'udb_import', array( 'sanitize_callback' => array( $this, 'process_import' ) ) );
+		add_action( 'admin_post_udb_tools_export', array( $this, 'process_export' ) );
+		add_action( 'admin_post_udb_tools_import', array( $this, 'process_import' ) );
 
-		// Settings sections.
-		add_settings_section( 'udb-export-section', __( 'Export', 'ultimate-dashboard' ), '', 'ultimate-dashboard-export' );
-		add_settings_section( 'udb-import-section', __( 'Import', 'ultimate-dashboard' ), '', 'ultimate-dashboard-import' );
+	}
 
-		// Settings fields.
-		add_settings_field( 'udb-export-field', '', array( $this, 'render_export_field' ), 'ultimate-dashboard-export', 'udb-export-section', array( 'class' => 'is-gapless has-small-text' ) );
-		add_settings_field( 'udb-import-field', '', array( $this, 'render_import_field' ), 'ultimate-dashboard-import', 'udb-import-section', array( 'class' => 'is-gapless has-small-text' ) );
+	/**
+	 * Whether the current user may use the tools.
+	 *
+	 * @return bool
+	 */
+	public function can_use_tools() {
+
+		return current_user_can( 'manage_options' ) && current_user_can( apply_filters( 'udb_tools_capability', 'manage_options' ) );
+
+	}
+
+	/**
+	 * The URL of the tools page.
+	 *
+	 * @return string
+	 */
+	public function tools_url() {
+
+		return admin_url( 'edit.php?post_type=udb_widgets&page=udb_tools' );
 
 	}
 
 	/**
 	 * Render export field.
 	 *
-	 * @param array $args The setting's arguments.
+	 * @param array $args Unused (kept for backwards compatibility).
 	 */
-	public function render_export_field( $args ) {
+	public function render_export_field( $args = array() ) {
 
 		$field = require __DIR__ . '/templates/fields/export-field.php';
 		$field();
@@ -140,9 +156,9 @@ class Tool_Module extends Base_Module {
 	/**
 	 * Render import field.
 	 *
-	 * @param array $args The setting's arguments.
+	 * @param array $args Unused (kept for backwards compatibility).
 	 */
-	public function render_import_field( $args ) {
+	public function render_import_field( $args = array() ) {
 
 		$field = require __DIR__ . '/templates/fields/import-field.php';
 		$field();
@@ -150,22 +166,51 @@ class Tool_Module extends Base_Module {
 	}
 
 	/**
-	 * Process the export.
+	 * Process the export (admin-post.php?action=udb_tools_export): sends the .json file.
 	 */
 	public function process_export() {
+
+		check_admin_referer( 'udb_tools_export', 'udb_tools_nonce' );
+
+		if ( ! $this->can_use_tools() ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to export these settings.', 'ultimate-dashboard' ), 403 );
+		}
 
 		$process = require __DIR__ . '/inc/process-export.php';
 		$process();
 
+		// Only reached when there was nothing to export: go back to the tools page with the notice.
+		set_transient( 'settings_errors', get_settings_errors(), 30 );
+
+		wp_safe_redirect( add_query_arg( 'settings-updated', 'true', $this->tools_url() ) );
+		exit;
+
 	}
 
 	/**
-	 * Process the import.
+	 * Process the import (admin-post.php?action=udb_tools_import), then go back to the tools page.
+	 *
+	 * The notices are added with add_settings_error() (PRO adds its own the same way) and shown
+	 * on the tools page, like options.php does it.
 	 */
 	public function process_import() {
 
+		check_admin_referer( 'udb_tools_import', 'udb_tools_nonce' );
+
+		if ( ! $this->can_use_tools() ) {
+			wp_die( esc_html__( 'Sorry, you are not allowed to import these settings.', 'ultimate-dashboard' ), 403 );
+		}
+
+		// Older versions left an empty "udb_import" option behind on every import.
+		delete_option( 'udb_import' );
+
 		$process = require __DIR__ . '/inc/process-import.php';
 		$process();
+
+		set_transient( 'settings_errors', get_settings_errors(), 30 );
+
+		wp_safe_redirect( add_query_arg( 'settings-updated', 'true', $this->tools_url() ) );
+		exit;
 
 	}
 
